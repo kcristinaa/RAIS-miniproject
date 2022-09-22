@@ -1,2 +1,2 @@
 # RAIS-miniproject
-Validating passively collected Fitbit sensing data
+Validating passively collected Fitbit sensing data.
