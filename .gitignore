@@ -227,3 +227,5 @@ dmypy.json
 cython_debug/
 
 /logs.log
+
+/environment.yml
