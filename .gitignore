@@ -229,3 +229,5 @@ cython_debug/
 /logs.log
 
 /environment.yml
+
+/credentials.json
