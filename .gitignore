@@ -75,7 +75,6 @@ fabric.properties
 ### JupyterNotebooks template
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
-
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 
@@ -164,13 +163,6 @@ docs/_build/
 .pybuilder/
 target/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:
@@ -227,7 +219,6 @@ dmypy.json
 cython_debug/
 
 /logs.log
-
 /environment.yml
-
 /credentials.json
+/config.env
