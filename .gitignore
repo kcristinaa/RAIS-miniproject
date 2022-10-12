@@ -219,6 +219,5 @@ dmypy.json
 cython_debug/
 
 /logs.log
-/environment.yml
 /credentials.json
 /config.env
