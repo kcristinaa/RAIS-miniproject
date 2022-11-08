@@ -76,7 +76,13 @@ def fitbit_one_hot_encoding(fitbit):
 
 def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas dataframe
 
-    fitbit_survey = pd.DataFrame()
+    column_list = list(survey.columns)
+    fitbit_columns = list(survey.columns)
+    fitbit_columns.remove('id')
+    fitbit_columns.remove('date')
+    for x in fitbit_columns:
+        column_list.append(x)
+    fitbit_survey = pd.DataFrame(columns=column_list)
     for user in users:
         user_survey = survey.loc[survey['id'] == user]
         user_fitbit = fitbit.loc[fitbit['id'] == user]
@@ -85,9 +91,11 @@ def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas d
             weekly_fitbit = user_fitbit.loc[user_fitbit['date'] < day]
             weekly_fitbit = weekly_fitbit.set_index(['date'])
             weekly_fitbit = weekly_fitbit.last('7D')
-            weekly_fitbit = weekly_fitbit.drop(columns=['id'])
-            for column in weekly_fitbit.columns:
-                fitbit_survey[column] = statistics.median(list(weekly_fitbit[column]))
+            cols = list(weekly_fitbit.columns)
+            cols.remove('id')
+            for column in cols:
+                fitbit_survey.loc[(fitbit_survey.id == user) & (fitbit_survey.date == day), column] = statistics.median(
+                    list(weekly_fitbit[column]))
 
     return fitbit_survey
 
