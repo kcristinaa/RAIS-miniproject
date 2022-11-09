@@ -184,7 +184,7 @@ def post_preprocessing(df, isSema):
 def normalization(train_data, test_data):
     scaler = MinMaxScaler()
     train_data = scaler.fit_transform(train_data)
-    test_data = scaler.fit_transform(test_data)
+    test_data = scaler.transform(test_data)
 
     return train_data, test_data
 
