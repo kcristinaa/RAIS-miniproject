@@ -195,6 +195,7 @@ def normalization(train_data, test_data):
 
 def train_test_split_per_user(data, train_size=0.7):
     users = list(set(data.id))
+    users = sorted(users, reverse=True)  # fix randomness
     total_users = len(users)
     slice = int(train_size*total_users)
     users_train = users[:slice]
