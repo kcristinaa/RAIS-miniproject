@@ -180,6 +180,15 @@ def post_preprocessing(df, isSema):
 
     return df
 
+
+def normalization(train_data, test_data):
+    scaler = MinMaxScaler()
+    train_data = scaler.fit_transform(train_data)
+    test_data = scaler.fit_transform(test_data)
+
+    return train_data, test_data
+
+
 # --------------------------------------------------------------------------- #
 
 # Split train and test set in order each user to belong only in one of them
