@@ -77,7 +77,7 @@ def fitbit_one_hot_encoding(fitbit):
 def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas dataframe
 
     column_list = list(survey.columns)
-    fitbit_columns = list(survey.columns)
+    fitbit_columns = list(fitbit.columns)
     fitbit_columns.remove('id')
     fitbit_columns.remove('date')
     for x in fitbit_columns:
@@ -96,6 +96,7 @@ def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas d
             for column in cols:
                 fitbit_survey.loc[(fitbit_survey.id == user) & (fitbit_survey.date == day), column] = statistics.median(
                     list(weekly_fitbit[column]))
+    fitbit_survey["date"] = pd.to_datetime(pd.to_datetime(fitbit_survey["date"]).dt.date)
 
     return fitbit_survey
 
@@ -178,5 +179,17 @@ def post_preprocessing(df, isSema):
     df = df.apply(lambda x: x.fillna(x.median()), axis=0)
 
     return df
+
+# --------------------------------------------------------------------------- #
+
+# Split train and test set in order each user to belong only in one of them
+
+def train_test_split_per_user(data, train_size=0.7):
+    users = list(set(data.id))
+    total_users = len(users)
+    slice = int(train_size*total_users)
+    users_train = users[:slice]
+    users_test = users[slice:]
+    return data[data.id.isin(users_train)], data[data.id.isin(users_test)]
 
 # --------------------------------------------------------------------------- #
