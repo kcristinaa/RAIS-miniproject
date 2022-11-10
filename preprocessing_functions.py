@@ -2,6 +2,8 @@ import statistics
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 # --------------------------------------------------------------------------- #
@@ -33,29 +35,21 @@ def fitbit_one_hot_encoding(fitbit):
     # bmi encoding
     fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 31.0 if x == '>=30' else x)
     fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 18.0 if x == '<19' else x)
-    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 26.0 if x == '>=25' else x)
-    fitbit['bmi_category'] = fitbit.bmi.apply(lambda bmi: 'Underweight' if bmi < 18.5 else (
-        'Normal' if bmi < 25 else ('Overweight' if bmi < 30 else 'Obese')))
-    fitbit = fitbit.drop(columns=['bmi'])
-    bmi_category = pd.get_dummies(fitbit['bmi_category'])
-    fitbit = pd.concat([fitbit, bmi_category], axis=1)
-    fitbit.drop(['bmi_category'], axis=1, inplace=True)
+    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 26.0 if x == '>=25' else x)  # it belongs to overweight
+    fitbit['bmi'] = fitbit.bmi.apply(lambda bmi: 0 if bmi < 18.5 else (
+        1 if bmi < 25 else (2 if bmi < 30 else 3)))
+    # 0: Underweight, 1: Normal, 2: Overweight, 3: Obese
 
     # age encoding
-    age = pd.get_dummies(fitbit['age'])
-    fitbit = pd.concat([fitbit, age], axis=1)
-    fitbit.drop(['age'], axis=1, inplace=True)
-    fitbit = fitbit.rename(columns={"<30": "below_30s", ">=30": "above_30s"})
-
+    fitbit['age'].replace(to_replace=['<30', '>=30'], value=[0, 1], inplace=True)
+    
     # mindfulness session encoding
     mind = pd.get_dummies(fitbit['mindfulness_session'])
     fitbit = pd.concat([fitbit, mind], axis=1)
-    fitbit.drop(['mindfulness_session'], axis=1, inplace=True)
-
+    fitbit.drop(['mindfulness_session'], axis=1, inplace=True) # highly imbalanced
+    
     # gender encoding
-    gender = pd.get_dummies(fitbit['gender'])
-    fitbit = pd.concat([fitbit, gender], axis=1)
-    fitbit.drop(['gender'], axis=1, inplace=True)
+    fitbit['gender'].replace(to_replace=['MALE', 'FEMALE'], value=[0, 1], inplace=True)
 
     # activity type encoding
     s = fitbit['activityType']
@@ -71,6 +65,20 @@ def fitbit_one_hot_encoding(fitbit):
 
 
 # --------------------------------------------------------------------------- #
+
+def sema_basic_preprocessing(df):
+    df["negative_feelings"] = np.where(df['TENSE/ANXIOUS']== 1, 1, np.where(df['ALERT']==1,1, np.where(df['SAD']==1,1, np.where(df['TIRED']==1,1, 0))))
+    df["positive_feelings"] = np.where(df['HAPPY']== 1, 1, np.where(df['NEUTRAL']==1,1, np.where(df['RESTED/RELAXED']==1,1, 0)))
+    df = df.drop(columns=['ALERT', 'HAPPY', 'NEUTRAL', 'RESTED/RELAXED', 'SAD', 'TENSE/ANXIOUS','TIRED'])
+    sns.countplot(y="negative_feelings", data=df)
+    plt.show()
+    sns.countplot(y="positive_feelings", data=df)
+    plt.show()
+
+    return df
+
+# --------------------------------------------------------------------------- #
+
 
 # Weekly frequency in fitbit dataframe regarding the corresponding survey
 
