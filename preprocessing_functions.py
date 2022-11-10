@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import seaborn as sns
+from sklearn.preprocessing import LabelEncoder
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 
 
 # --------------------------------------------------------------------------- #
@@ -191,7 +193,9 @@ def post_preprocessing(df, isSema):
 
 def normalization(train_data, test_data):
     scaler = MinMaxScaler()
-    train_data = scaler.fit_transform(train_data)
+    #train_data = scaler.fit_transform(train_data)
+    #train_data = pd.DataFrame(train_data)
+    
     test_data = scaler.transform(test_data)
 
     return train_data, test_data
