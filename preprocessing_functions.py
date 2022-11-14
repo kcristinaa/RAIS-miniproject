@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import seaborn as sns
-from sklearn.preprocessing import LabelEncoder
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 
@@ -176,9 +175,6 @@ def post_preprocessing(df, isSema):
     if not (isSema):
         df = df.loc[df.astype(str).drop_duplicates().index]
 
-    # Remove id
-    df = df.drop(columns=['id'])
-
     # Day-related feature extraction
     df = date_engineering(df)
 
@@ -186,6 +182,7 @@ def post_preprocessing(df, isSema):
     df = df.mask(df.sub(df.mean()).div(df.std()).abs().gt(2))
 
     # Replace NaN values
+    df[df.columns] = df[df.columns].apply(pd.to_numeric, errors='coerce')
     df = df.apply(lambda x: x.fillna(x.median()), axis=0)
 
     return df
