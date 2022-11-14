@@ -71,10 +71,10 @@ def sema_basic_preprocessing(df):
     df["negative_feelings"] = np.where(df['TENSE/ANXIOUS']== 1, 1, np.where(df['ALERT']==1,1, np.where(df['SAD']==1,1, np.where(df['TIRED']==1,1, 0))))
     df["positive_feelings"] = np.where(df['HAPPY']== 1, 1, np.where(df['NEUTRAL']==1,1, np.where(df['RESTED/RELAXED']==1,1, 0)))
     df = df.drop(columns=['ALERT', 'HAPPY', 'NEUTRAL', 'RESTED/RELAXED', 'SAD', 'TENSE/ANXIOUS','TIRED'])
-    sns.countplot(y="negative_feelings", data=df)
-    plt.show()
-    sns.countplot(y="positive_feelings", data=df)
-    plt.show()
+    #sns.countplot(y="negative_feelings", data=df)
+    #plt.show()
+    #sns.countplot(y="positive_feelings", data=df)
+    #plt.show()
 
     return df
 
@@ -182,8 +182,9 @@ def post_preprocessing(df, isSema):
     df = df.mask(df.sub(df.mean()).div(df.std()).abs().gt(2))
 
     # Replace NaN values
-    df[df.columns] = df[df.columns].apply(pd.to_numeric, errors='coerce')
-    df = df.apply(lambda x: x.fillna(x.median()), axis=0)
+    cols = df.columns.difference(['id'])
+    df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
+    df[cols] = df[cols].apply(lambda x: x.fillna(x.median()), axis=0)
 
     return df
 
