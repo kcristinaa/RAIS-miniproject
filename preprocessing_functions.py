@@ -181,10 +181,17 @@ def post_preprocessing(df, isSema):
     # Replace outliers
     df = df.mask(df.sub(df.mean()).div(df.std()).abs().gt(2))
 
-    # Replace NaN values
+    # Replace NaN valuess
     cols = df.columns.difference(['id'])
     df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
     df[cols] = df[cols].apply(lambda x: x.fillna(x.median()), axis=0)
+    
+    # Replace steps < 500 with user's median
+    ids=df['id']
+
+    for id in ids:
+        df.loc[df['steps'] < 500] = df['steps'].median()
+    
 
     return df
 
@@ -215,3 +222,9 @@ def train_test_split_per_user(data, train_size=0.7):
     return data[data.id.isin(users_train)], data[data.id.isin(users_test)]
 
 # --------------------------------------------------------------------------- #
+
+# Replace 0 values with the mean value of each user, returns user's dataframe without 0 in this feature
+def replace_zeros_numeric_data(feature, usr_df, mean):
+    usr_df[feature] = usr_df[feature].apply(lambda v: mean if v == 0 else v)
+
+    return usr_df
