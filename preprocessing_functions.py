@@ -187,12 +187,10 @@ def post_preprocessing(df, isSema):
     df[cols] = df[cols].apply(lambda x: x.fillna(x.median()), axis=0)
     
     # Replace steps < 500 with user's median
-    ids=df['id']
-
-    for id in ids:
-        df.loc[df['steps'] < 500] = df['steps'].median()
+    #ids=df['id']
+    #for id in ids:
+    #    df.iloc[df['steps'] < 500] = df['steps'].median()
     
-
     return df
 
 
