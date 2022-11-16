@@ -6,13 +6,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 
-
 # --------------------------------------------------------------------------- #
 
 # Pre-processing actions for baseline dataframe
 
 def fitbit_basic_preprocessing(df):
-
+    
     # selecting the experiment days
     df = df.sort_values(by='date', ascending=True)
     df['date'] = pd.to_datetime(df['date'].astype("str"), format='%Y-%m-%d')
@@ -30,6 +29,7 @@ def fitbit_basic_preprocessing(df):
 
     return df
 
+# --------------------------------------------------------------------------- #
 
 def fitbit_one_hot_encoding(fitbit):
 
@@ -64,22 +64,16 @@ def fitbit_one_hot_encoding(fitbit):
 
     return fitbit
 
-
 # --------------------------------------------------------------------------- #
 
 def sema_basic_preprocessing(df):
     df["negative_feelings"] = np.where(df['TENSE/ANXIOUS']== 1, 1, np.where(df['ALERT']==1,1, np.where(df['SAD']==1,1, np.where(df['TIRED']==1,1, 0))))
     df["positive_feelings"] = np.where(df['HAPPY']== 1, 1, np.where(df['NEUTRAL']==1,1, np.where(df['RESTED/RELAXED']==1,1, 0)))
     df = df.drop(columns=['ALERT', 'HAPPY', 'NEUTRAL', 'RESTED/RELAXED', 'SAD', 'TENSE/ANXIOUS','TIRED'])
-    #sns.countplot(y="negative_feelings", data=df)
-    #plt.show()
-    #sns.countplot(y="positive_feelings", data=df)
-    #plt.show()
 
     return df
 
 # --------------------------------------------------------------------------- #
-
 
 # Weekly frequency in fitbit dataframe regarding the corresponding survey
 
@@ -109,7 +103,6 @@ def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas d
 
     return fitbit_survey
 
-
 # --------------------------------------------------------------------------- #
 
 # Pre-processing actions after merging the fitbit dataframe with a sema/survey
@@ -125,6 +118,7 @@ def sin_transform(values):
 
     return np.sin(2 * np.pi * values / len(set(values)))
 
+# --------------------------------------------------------------------------- #
 
 def cos_transform(values):
     """
@@ -136,6 +130,7 @@ def cos_transform(values):
     """
     return np.cos(2 * np.pi * values / len(set(values)))
 
+# --------------------------------------------------------------------------- #
 
 def date_engineering(data):  # data could be any dataframe that needs date engineering
 
@@ -165,6 +160,7 @@ def date_engineering(data):  # data could be any dataframe that needs date engin
 
     return data
 
+# --------------------------------------------------------------------------- #
 
 def post_preprocessing(df):
 
@@ -175,36 +171,45 @@ def post_preprocessing(df):
     df = date_engineering(df)
 
     # Replace outliers
-    # separately for each column in the dataframe
-    for columnName in df.iteritems():
-        df = df.mask(df.sub(df.mean()).div(df.std()).abs().gt(2))
-
-    # Replace NaN valuess
-    # separately for each column in the dataframe
-    cols = df.columns.difference(['id'])
-    df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
-    df[cols] = df[cols].apply(lambda x: x.fillna(x.median()), axis=0)
+    # separately for each column in the dataframe 
     
+    columns = df.iloc[:, 2:].columns # exlude id and date columns
+    
+    for feature_name in columns:
+        df[feature_name] = df[feature_name].mask(df[feature_name].sub(df[feature_name].mean()).div(df[feature_name].std()).abs().gt(3))
+        
+    # Replace NaN values
+    # separately for each column in the dataframe
+    
+    for cols in columns:
+        df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
+        df[cols] = df[cols].fillna(df[cols].median())
+   
     # Replace steps < 500 with user's median
+    
     ids=df['id']
-    df_user = pd.DataFrame(df)
-    for id in ids:
-        df_user.iloc[df_user['steps'] < 500] = df_user['steps'].median()
-        df = pd.concat([df, df_user]) 
+    
+    for user in ids:
+        df_user = df[df['id'] == user]
+        median = df_user['steps'].median()
+        df_user.iloc[df_user['steps'] < 500] = median
+        df = pd.concat([df, df_user])
+    
     return df
 
+# --------------------------------------------------------------------------- #
 
-def normalization(train_data, test_data):
+# separately for each column in the dataframe
 
-    scaler = MinMaxScaler()
-    train_data = scaler.fit_transform(train_data)
-    train_data = pd.DataFrame(train_data)
-
-    test_data = scaler.transform(test_data)
-    test_data = pd.DataFrame(test_data)
-
-    return train_data, test_data
-
+def normalization(df):
+    columns = df.iloc[:, 2:].columns # exlude id and date columns
+    
+    for feature_name in df.columns:
+        max_value = df[feature_name].max()
+        min_value = df[feature_name].min()
+        df[feature_name] = (df[feature_name] - min_value) / (max_value - min_value)
+        
+    return df
 
 # --------------------------------------------------------------------------- #
 
