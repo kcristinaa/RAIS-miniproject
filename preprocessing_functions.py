@@ -226,4 +226,45 @@ def train_test_split_per_user(data, train_size=0.7):
 
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+
+
+# Label Engineering VO2Max Get VO2 max (cardio score) category based on age category and filteredDemographicVO2Max,
+# according to this publication: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0073182 as
+# summarized here: https://www.healthline.com/health/vo2-max#increasing-vo%E2%82%82-max
+
+def get_cardio_category(gender, age, vo2max):
+    if pd.isna(gender):
+        return np.nan
+    if gender == "MALE":
+        if age == "<30":
+            if vo2max >= 51.1:
+                return "Superior/Excellent"
+            elif vo2max >= 41.7:
+                return "Fair/Good"
+            else:
+                return "Poor"
+        else:
+            if vo2max >= 48.3:
+                return "Superior/Excellent"
+            elif vo2max >= 40.5:
+                return "Fair/Good"
+            else:
+                return "Poor"
+    else:
+        if age == "<30":
+            if vo2max >= 43.9:
+                return "Superior/Excellent"
+            elif vo2max >= 36.1:
+                return "Fair/Good"
+            else:
+                return "Poor"
+        else:
+            if vo2max >= 42.4:
+                return "Superior/Excellent"
+            elif vo2max >= 34.4:
+                return "Fair/Good"
+            else:
+                return "Poor"
+
 
