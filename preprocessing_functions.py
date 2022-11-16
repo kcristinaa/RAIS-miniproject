@@ -166,31 +166,31 @@ def date_engineering(data):  # data could be any dataframe that needs date engin
     return data
 
 
-def post_preprocessing(df, isSema):
+def post_preprocessing(df):
 
     # Because of way too many missing values in spo2 (80%) and scl_avg (95%), I drop these 2 columns
     df = df.drop(columns=['spo2', 'scl_avg'])
-
-    # Drop duplicates
-    if not (isSema):
-        df = df.loc[df.astype(str).drop_duplicates().index]
 
     # Day-related feature extraction
     df = date_engineering(df)
 
     # Replace outliers
-    df = df.mask(df.sub(df.mean()).div(df.std()).abs().gt(2))
+    # separately for each column in the dataframe
+    for columnName in df.iteritems():
+        df = df.mask(df.sub(df.mean()).div(df.std()).abs().gt(2))
 
     # Replace NaN valuess
+    # separately for each column in the dataframe
     cols = df.columns.difference(['id'])
     df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
     df[cols] = df[cols].apply(lambda x: x.fillna(x.median()), axis=0)
     
     # Replace steps < 500 with user's median
-    #ids=df['id']
-    #for id in ids:
-    #    df.iloc[df['steps'] < 500] = df['steps'].median()
-    
+    ids=df['id']
+    df_user = pd.DataFrame(df)
+    for id in ids:
+        df_user.iloc[df_user['steps'] < 500] = df_user['steps'].median()
+        df = pd.concat([df, df_user])
     return df
 
 
@@ -221,11 +221,7 @@ def train_test_split_per_user(data, train_size=0.7):
 
 # --------------------------------------------------------------------------- #
 
-# Replace 0 values with the mean value of each user, returns user's dataframe without 0 in this feature
-def replace_zeros_numeric_data(feature, usr_df, mean):
-    usr_df[feature] = usr_df[feature].apply(lambda v: mean if v == 0 else v)
 
-    return usr_df
 
 # --------------------------------------------------------------------------- #
 
