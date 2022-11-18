@@ -2,9 +2,6 @@ import statistics
 import numpy as np
 import pandas as pd
 from datetime import datetime
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
 
 # --------------------------------------------------------------------------- #
 
@@ -69,7 +66,7 @@ def fitbit_one_hot_encoding(fitbit):
 def sema_basic_preprocessing(df):
     df["negative_feelings"] = np.where(df['TENSE/ANXIOUS']== 1, 1, np.where(df['ALERT']==1,1, np.where(df['SAD']==1,1, np.where(df['TIRED']==1,1, 0))))
     df["positive_feelings"] = np.where(df['HAPPY']== 1, 1, np.where(df['NEUTRAL']==1,1, np.where(df['RESTED/RELAXED']==1,1, 0)))
-    df = df.drop(columns=['ALERT', 'HAPPY', 'NEUTRAL', 'RESTED/RELAXED', 'SAD', 'TENSE/ANXIOUS','TIRED'])
+    df = df.drop(columns=['ALERT', 'HAPPY', 'NEUTRAL', 'RESTED/RELAXED', 'SAD', 'TENSE/ANXIOUS', 'TIRED'])
 
     return df
 
@@ -171,29 +168,31 @@ def post_preprocessing(df):
     df = date_engineering(df)
 
     # Replace outliers
-    # separately for each column in the dataframe 
-    
-    columns = df.iloc[:, 2:].columns # exlude id and date columns
-    
-    for feature_name in columns:
-        df[feature_name] = df[feature_name].mask(df[feature_name].sub(df[feature_name].mean()).div(df[feature_name].std()).abs().gt(3))
-        
+    # separately for each column in the dataframe
+    columns = df.iloc[:, 1:].columns  # excludes id column
+
+    for col in columns:
+        df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
+
     # Replace NaN values
     # separately for each column in the dataframe
-    
-    for cols in columns:
-        df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
-        df[cols] = df[cols].fillna(df[cols].median())
-   
+
+    for col in columns:
+        df[col] = df[col].apply(pd.to_numeric, errors='coerce')
+        df[col] = df[col].fillna(df[col].median())
+
     # Replace steps < 500 with user's median
-    
-    ids=df['id']
-    
-    for user in ids:
-        df_user = df[df['id'] == user]
-        median = df_user['steps'].median()
-        df_user.iloc[df_user['steps'] < 500] = median
-        df = pd.concat([df, df_user])
+
+    #ids = df['id']
+
+    #for user in ids:
+    #    df_user = df[df['id'] == user]
+    #    median = df_user['steps'].median()
+    #    df_user['steps'].apply(lambda x: median if x < 500 else x)
+        # df_user.loc[df_user['steps']<500,'steps'] = median
+        # df_user['steps'].mask(df_user['steps']<500,median).reset_index()
+        # df_user['steps'] = df_user['steps'].where(df_user['steps'] < 500, median, inplace=True)
+    #    df = pd.concat([df, df_user])
     
     return df
 
