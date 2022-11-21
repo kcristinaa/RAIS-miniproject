@@ -161,27 +161,21 @@ def date_engineering(data):  # data could be any dataframe that needs date engin
 
 def post_preprocessing(df):
 
-    # Because of way too many missing values in spo2 (80%) and scl_avg (95%), I drop these 2 columns
+    # Because of way too many missing values in spo2 (80%) and scl_avg (95%), I drop these 2 columns? 
     df = df.drop(columns=['spo2', 'scl_avg'])
 
-    # Day-related feature extraction
-    #df = date_engineering(df)
-
-    # Replace outliers
+    # Replace outliers with NaNs
     # separately for each column in the dataframe
     columns = df.iloc[:, 1:].columns  # excludes id column
 
     for col in columns:
         df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
 
-    # Replace NaN values
-    # separately for each column in the dataframe
-
+    # Replace NaN values with column's median
+    
     for col in columns:
         df[col] = df[col].apply(pd.to_numeric, errors='coerce')
         df[col] = df[col].fillna(df[col].median())
-
-    # Replace steps < 500 with user's median ?
     
     return df
 
