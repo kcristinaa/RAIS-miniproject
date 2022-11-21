@@ -165,7 +165,7 @@ def post_preprocessing(df):
     df = df.drop(columns=['spo2', 'scl_avg'])
 
     # Day-related feature extraction
-    df = date_engineering(df)
+    #df = date_engineering(df)
 
     # Replace outliers
     # separately for each column in the dataframe
@@ -181,34 +181,10 @@ def post_preprocessing(df):
         df[col] = df[col].apply(pd.to_numeric, errors='coerce')
         df[col] = df[col].fillna(df[col].median())
 
-    # Replace steps < 500 with user's median
-
-    #ids = df['id']
-
-    #for user in ids:
-    #    df_user = df[df['id'] == user]
-    #    median = df_user['steps'].median()
-    #    df_user['steps'].apply(lambda x: median if x < 500 else x)
-        # df_user.loc[df_user['steps']<500,'steps'] = median
-        # df_user['steps'].mask(df_user['steps']<500,median).reset_index()
-        # df_user['steps'] = df_user['steps'].where(df_user['steps'] < 500, median, inplace=True)
-    #    df = pd.concat([df, df_user])
+    # Replace steps < 500 with user's median ?
     
     return df
 
-# --------------------------------------------------------------------------- #
-
-# separately for each column in the dataframe
-
-def normalization(df):
-    columns = df.iloc[:, 2:].columns # exlude id and date columns
-    
-    for feature_name in df.columns:
-        max_value = df[feature_name].max()
-        min_value = df[feature_name].min()
-        df[feature_name] = (df[feature_name] - min_value) / (max_value - min_value)
-        
-    return df
 
 # --------------------------------------------------------------------------- #
 
