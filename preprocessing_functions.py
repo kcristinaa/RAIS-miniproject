@@ -168,7 +168,7 @@ def post_preprocessing(df):
     # separately for each column in the dataframe
     columns = df.iloc[:, 1:].columns  # excludes id column
 
-    for col in columns:
+    for col in columns:  # manually dropped for PANAS and STAI pre-processing
         df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
 
     # Replace NaN values with column's median
