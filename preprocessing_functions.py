@@ -41,10 +41,8 @@ def fitbit_one_hot_encoding(fitbit):
     # age encoding
     fitbit['age'].replace(to_replace=['<30', '>=30'], value=[0, 1], inplace=True)
     
-    # mindfulness session encoding
-    mind = pd.get_dummies(fitbit['mindfulness_session'])
-    fitbit = pd.concat([fitbit, mind], axis=1)
-    fitbit.drop(['mindfulness_session'], axis=1, inplace=True) # highly imbalanced
+    # mindfulness session encoding - highly imbalanced
+    fitbit['mindfulness_session'].replace(to_replace=['False', True], value=[0, 1], inplace=True)
     
     # gender encoding
     fitbit['gender'].replace(to_replace=['MALE', 'FEMALE'], value=[0, 1], inplace=True)
@@ -164,18 +162,38 @@ def post_preprocessing(df):
     # Because of way too many missing values in spo2 (80%) and scl_avg (95%), I drop these 2 columns? 
     df = df.drop(columns=['spo2', 'scl_avg'])
 
+    date_features = ["month_sin", "weekday_sin", "week_sin", "day_sin", "month_cos", "weekday_cos", "week_cos", "day_cos"]
+    binary_features = ["age", "gender", "bmi", "mindfulness_session", "Aerobic Workout", "Bike", "Bootcamp", "Circuit Training", "Elliptical",
+                       "Hike", "Interval Workout", "Martial Arts", "Run", "Spinning", "Sport", "Swim", "Treadmill", "Walk", "Weights",
+                       "Workout", "Yoga/Pilates"]
+
     # Replace outliers with NaNs
     # separately for each column in the dataframe
-    columns = df.iloc[:, 1:].columns  # excludes id column
-
+    columns = list(df.iloc[:, 1:].columns)  # excludes id column
+    # exclude date features
+    for x in date_features:
+        columns.remove(x)
+    # exclude binary features
+    for x in binary_features:
+        columns.remove(x)
     for col in columns:  # manually dropped for PANAS and STAI pre-processing
         df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
 
-    # Replace NaN values with column's median
-    
+    # Replace NaN values with column's median for non-binary features
+    columns = list(df.iloc[:, 1:].columns)  # excludes id column
+    # exclude date features
+    for x in date_features:
+        columns.remove(x)
+    # exclude binary features
+    for x in binary_features:
+        columns.remove(x)
     for col in columns:
         df[col] = df[col].apply(pd.to_numeric, errors='coerce')
         df[col] = df[col].fillna(df[col].median())
+
+    # Replace NaN values with column's more frequent occurrence for binary features
+    for col in binary_features:
+        df[col] = df[col].fillna(df[col].mode().iloc[0])
     
     return df
 
