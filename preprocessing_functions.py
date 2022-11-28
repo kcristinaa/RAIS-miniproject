@@ -58,6 +58,9 @@ def fitbit_one_hot_encoding(fitbit):
     # badgeType encoding - actually is deletion because it has 92% missing values
     fitbit = fitbit.drop(columns='badgeType')
 
+    # ECG alert encoding
+    fitbit['heart_rate_alert'].replace(to_replace=['NONE', 'LOW_HR'], value=[0, 1], inplace=True)
+
     return fitbit
 
 # --------------------------------------------------------------------------- #
@@ -160,34 +163,27 @@ def date_engineering(data):  # data could be any dataframe that needs date engin
 
 def post_preprocessing(df):
 
-    # create the 2 new columns about spo2 and scl_avg before drop them
-    df = feature_engineering_functions_EVA.use_EDA_SpO2(df)
+    # create the 3 new columns about spo2, scl_avg, heart_rate_alert before drop them
+    df = feature_engineering_functions_EVA.use_EDA_SpO2_ECG(df)
 
-    # Because of way too many missing values in spo2 (80%) and scl_avg (95%), I drop these 2 columns? 
-    df = df.drop(columns=['spo2', 'scl_avg'])
+    # Because of too many missing values in spo2 (80%), scl_avg (95%) and heart_rate_alert (99%), I drop these 3 columns
+    df = df.drop(columns=['spo2', 'scl_avg', "heart_rate_alert"])
 
-    date_features = ["month_sin", "weekday_sin", "week_sin", "day_sin", "month_cos", "weekday_cos", "week_cos", "day_cos"]
     binary_features = ["age", "gender", "bmi", "mindfulness_session", "Aerobic Workout", "Bike", "Bootcamp", "Circuit Training", "Elliptical",
                        "Hike", "Interval Workout", "Martial Arts", "Run", "Spinning", "Sport", "Swim", "Treadmill", "Walk", "Weights",
-                       "Workout", "Yoga/Pilates"]
+                       "Workout", "Yoga/Pilates", 'spo2_tracking', 'EDA_tracking', 'ECG_tracking']
 
     # Replace outliers with NaNs
     # separately for each column in the dataframe
-    columns = list(df.iloc[:, 1:].columns)  # excludes id column
-    # exclude date features
-    for x in date_features:
-        columns.remove(x)
+    columns = list(df.iloc[:, 2:].columns)  # excludes id and date columns
     # exclude binary features
     for x in binary_features:
         columns.remove(x)
-    for col in columns:  # manually dropped for PANAS and STAI pre-processing
+    for col in columns:
         df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
 
     # Replace NaN values with column's median for non-binary features
-    columns = list(df.iloc[:, 1:].columns)  # excludes id column
-    # exclude date features
-    for x in date_features:
-        columns.remove(x)
+    columns = list(df.iloc[:, 2:].columns)  # excludes id and date columns
     # exclude binary features
     for x in binary_features:
         columns.remove(x)
