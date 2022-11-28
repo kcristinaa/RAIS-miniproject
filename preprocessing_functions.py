@@ -214,18 +214,7 @@ def train_test_split_per_user(data, train_size=0.7):
 # --------------------------------------------------------------------------- #
 
 
-def train_test_split_per_user(data, train_size=0.7):
-    users = list(set(data.id))
-    total_users = len(users)
-    slice = int(train_size*total_users)
-    users_train = users[:slice]
-    users_test = users[slice:]
-    return data[data.id.isin(users_train)], data[data.id.isin(users_test)]
-
-
-
 # --------------------------------------------------------------------------- #
-
 
 # Label Engineering VO2Max Get VO2 max (cardio score) category based on age category and filteredDemographicVO2Max,
 # according to this publication: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0073182 as
