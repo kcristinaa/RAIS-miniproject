@@ -2,6 +2,7 @@ import statistics
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import feature_engineering_functions_EVA
 
 # --------------------------------------------------------------------------- #
 
@@ -158,6 +159,9 @@ def date_engineering(data):  # data could be any dataframe that needs date engin
 # --------------------------------------------------------------------------- #
 
 def post_preprocessing(df):
+
+    # create the 2 new columns about spo2 and scl_avg before drop them
+    df = feature_engineering_functions_EVA.use_EDA_SpO2(df)
 
     # Because of way too many missing values in spo2 (80%) and scl_avg (95%), I drop these 2 columns? 
     df = df.drop(columns=['spo2', 'scl_avg'])
