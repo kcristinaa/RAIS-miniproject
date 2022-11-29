@@ -49,3 +49,19 @@ def different_activity_types(data):
                 different_types = different_types + 1
         data.loc[data['id'] == user, 'different_activity_types'] = different_types
     return data
+
+
+# Creates a new column with the percentage of fitbit usage while sleeping for each user
+def use_during_sleep(data):
+    users = list(data['id'].unique())
+    data['used_during_night'] = ""
+    for user in users:
+        user_df = data.loc[data['id'] == user]
+        user_df = user_df[["nightly_temperature", "full_sleep_breathing_rate", "sleep_duration", "minutesToFallAsleep",
+                           "minutesAsleep", "minutesAwake", "minutesAfterWakeup", "sleep_efficiency",
+                           "sleep_deep_ratio", "sleep_wake_ratio", "sleep_light_ratio", "sleep_rem_ratio"]]
+        all_days = len(user_df)
+        user_df = user_df.dropna(how='all')
+        days_used = len(user_df)
+        data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
+    return data
