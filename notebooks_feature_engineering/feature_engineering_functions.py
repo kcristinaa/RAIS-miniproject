@@ -1,4 +1,7 @@
+import holidays
 import pandas as pd
+import datetime
+
 
 def f(row):
     if row['steps'] < 500:
@@ -17,17 +20,17 @@ def use_EDA_SpO2_ECG(df):
 
     for user in users:
         user_df = df.loc[df['id'] == user]
-        #spo2
+        # spo2
         if user_df['spo2'].isnull().sum() == len(user_df):
             df.loc[df['id'] == user, 'spo2_tracking'] = 0
         else:
             df.loc[df['id'] == user, 'spo2_tracking'] = 1
-        #EDA
+        # EDA
         if user_df['scl_avg'].isnull().sum() == len(user_df):
             df.loc[df['id'] == user, 'EDA_tracking'] = 0
         else:
             df.loc[df['id'] == user, 'EDA_tracking'] = 1
-        #ECG
+        # ECG
         if user_df['heart_rate_alert'].isnull().sum() == len(user_df):
             df.loc[df['id'] == user, 'ECG_tracking'] = 0
         else:
@@ -65,3 +68,22 @@ def use_during_sleep(data):
         days_used = len(user_df)
         data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
     return data
+
+
+def is_weekend(df):
+    df.date = pd.to_datetime(df.date, infer_datetime_format=True)
+    df.loc[:, "is_weekend"] = df.date.dt.dayofweek  # returns 0-4 for Monday-Friday and 5-6 for Weekend
+    df.is_weekend = df.is_weekend > 4
+    return df
+
+
+def is_holiday(df):
+    gr_holidays = list(holidays.GR(years=[2021, 2022]).keys())
+    swe_holdidays = list(holidays.SWE(years=[2021, 2022]).keys())
+    cy_holidays = list(holidays.CY(years=[2021, 2022]).keys())
+    it_holidays = list(holidays.IT(years=[2021, 2022]).keys())
+
+    df.loc[:, 'is_holiday'] = df.date.apply(lambda d: True if (
+            (d in gr_holidays) or (d in swe_holdidays) or (d in cy_holidays) or (d in it_holidays)) else False)
+
+    return df
