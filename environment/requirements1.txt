@@ -1,0 +1,36 @@
+# PYTHON 3.8
+# GENERAL LIBRARIES
+bson==0.5.10
+Cython==0.29.14
+numpy
+pandas==1.5.2
+python-dateutil
+spacy==2.3.8
+tqdm==4.64.1
+
+# JUPYTER
+jupyter>=1.0.0
+notebook>=6.4.12
+
+# DATA HANDLING
+dataprep==0.4.3
+tsfresh==0.19.0
+holidays
+
+# MACHINE LEARNING
+imbalanced-learn==0.7.0
+lightgbm==3.3.3
+nltk==3.7
+pycaret==2.3.10
+scikit-learn==0.23.2
+sklearn==0.0.post1
+
+# VISUALIZATIONS
+matplotlib==3.6.2
+matplotlib-inline==0.1.6
+plotly==5.11.0
+scikit-plot
+seaborn==0.12.1
+
+# IF YOU USE DOCKER UNCOMMENT THE FOLLOWING
+# docker==6.0.1

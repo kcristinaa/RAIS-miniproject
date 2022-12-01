@@ -2,7 +2,9 @@ import holidays
 import pandas as pd
 import datetime
 
+# ----------------------------------------------------------------------------------------------- #
 
+# adds wear_day
 def f(row):
     if row['steps'] < 500:
         val = 0
@@ -10,6 +12,7 @@ def f(row):
         val = 1
     return val
 
+# ----------------------------------------------------------------------------------------------- #
 
 # Creates 2 columns that represent if a user has tracked at least once its spo2 or eda
 def use_EDA_SpO2_ECG(df):

@@ -2,7 +2,6 @@ import statistics
 import numpy as np
 import pandas as pd
 from datetime import datetime
-import feature_engineering_functions
 
 # --------------------------------------------------------------------------- #
 
@@ -29,39 +28,56 @@ def fitbit_basic_preprocessing(df):
 
 # --------------------------------------------------------------------------- #
 
-def fitbit_one_hot_encoding(fitbit):
+def sin_transform(values):
+    """
+    Applies SIN transform to a series value.
+    Args:
+        values (pd.Series): A series to apply SIN transform on.
+    Returns
+        (pd.Series): The transformed series.
+    """
 
-    # bmi encoding
-    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 31.0 if x == '>=30' else x)
-    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 18.0 if x == '<19' else x)
-    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 26.0 if x == '>=25' else x)  # it belongs to overweight
-    fitbit['bmi'] = fitbit.bmi.apply(lambda bmi: 0 if bmi < 18.5 else (
-        1 if bmi < 25 else (2 if bmi < 30 else 3)))
-    # 0: Underweight, 1: Normal, 2: Overweight, 3: Obese
+    return np.sin(2 * np.pi * values / len(set(values)))
 
-    # age encoding
-    fitbit['age'].replace(to_replace=['<30', '>=30'], value=[0, 1], inplace=True)
-    
-    # mindfulness session encoding - highly imbalanced
-    fitbit['mindfulness_session'].replace(to_replace=['False', True], value=[0, 1], inplace=True)
-    
-    # gender encoding
-    fitbit['gender'].replace(to_replace=['MALE', 'FEMALE'], value=[0, 1], inplace=True)
 
-    # activity type encoding
-    s = fitbit['activityType']
-    dum = pd.get_dummies(s.apply(pd.Series).stack()).sum(level=0)
-    df = pd.concat([s, dum], axis=1)
-    fitbit = pd.concat([fitbit, df], axis=1)
-    fitbit = fitbit.drop(columns='activityType')
+def cos_transform(values):
+    """
+    Applies COS transform to a series value.
+    Args:
+        values (pd.Series): A series to apply SIN transform on.
+    Returns
+        (pd.Series): The transformed series.
+    """
+    return np.cos(2 * np.pi * values / len(set(values)))
 
-    # badgeType encoding - actually is deletion because it has 92% missing values
-    fitbit = fitbit.drop(columns='badgeType')
 
-    # ECG alert encoding
-    fitbit['heart_rate_alert'].replace(to_replace=['NONE', 'LOW_HR'], value=[0, 1], inplace=True)
+def date_engineering(data):  # data could be any dataframe that needs date engineering
 
-    return fitbit
+    data['date'] = pd.to_datetime(data.date, format='%m/%d/%y %H:%M:%S')
+    data = data.astype({"date": str})
+
+    # Extract features from date
+    data["year"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').year)
+    data["month"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').month)
+    data["weekday"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').weekday())
+    data["week"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').isocalendar()[1])
+    data["day"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').day)
+
+    # Sin transformation in date features
+    data["month_sin"] = sin_transform(data["month"])
+    data["weekday_sin"] = sin_transform(data["weekday"])
+    data["week_sin"] = sin_transform(data["week"])
+    data["day_sin"] = sin_transform(data["day"])
+
+    # Cosine transformation in date features
+    data["month_cos"] = cos_transform(data["month"])
+    data["weekday_cos"] = cos_transform(data["weekday"])
+    data["week_cos"] = cos_transform(data["week"])
+    data["day_cos"] = cos_transform(data["day"])
+
+    data = data.drop(columns=['year', 'month', 'weekday', 'week', 'day'])
+
+    return data
 
 # --------------------------------------------------------------------------- #
 
@@ -71,6 +87,132 @@ def sema_basic_preprocessing(df):
     df = df.drop(columns=['ALERT', 'HAPPY', 'NEUTRAL', 'RESTED/RELAXED', 'SAD', 'TENSE/ANXIOUS', 'TIRED'])
 
     return df
+
+# --------------------------------------------------------------------------- #
+
+def one_hot_encoding(fitbit):
+    
+    # badgeType encoding 
+    s = fitbit['badgeType']
+    dum = pd.get_dummies(s.apply(pd.Series).stack()).sum(level=0)
+    df = pd.concat([s, dum], axis=1)
+    fitbit = pd.concat([fitbit, df], axis=1)
+    fitbit = fitbit.drop(columns='badgeType')
+    
+    # activity type encoding
+    s = fitbit['activityType']
+    dum = pd.get_dummies(s.apply(pd.Series).stack()).sum(level=0)
+    df = pd.concat([s, dum], axis=1)
+    fitbit = pd.concat([fitbit, df], axis=1)
+    fitbit = fitbit.drop(columns='activityType')
+        
+    # mindfulness session encoding - highly imbalanced
+    fitbit['mindfulness_session'].replace(to_replace=['False', True], value=[0, 1], inplace=True)
+    
+    # age encoding
+    fitbit['age'].replace(to_replace=['<30', '>=30'], value=[0, 1], inplace=True)
+    
+    # gender encoding
+    fitbit['gender'].replace(to_replace=['MALE', 'FEMALE'], value=[0, 1], inplace=True)     
+    
+    # bmi encoding
+    fitbit['bmi'] = fitbit['bmi'].fillna(fitbit['bmi'].mode().iloc[0])
+    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 31.0 if x == '>=30' else x)
+    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 18.0 if x == '<19' else x)
+    fitbit["bmi"] = fitbit["bmi"].apply(lambda x: 26.0 if x == '>=25' else x) # it belongs to overweight
+    fitbit['bmi'] = fitbit.bmi.apply(lambda bmi: 'Underweight' if bmi < 18.5 else ('Normal' if bmi < 25 else ('Overweight' if bmi < 30 else 'Obese'))) # 0: Underweight, 1: Normal, 2: Overweight, 3: Obese
+    
+    # ECG alert encoding
+    fitbit['heart_rate_alert'].replace(to_replace=['NONE', 'LOW_HR'], value=[0, 1], inplace=True)
+    
+    return fitbit
+
+# --------------------------------------------------------------------------- #
+
+# Creates 3 columns that represent if a user has tracked at least once its spo2 or eda or ecg
+
+def use_EDA_SpO2_ECG(df):
+    df['spo2_tracking'] = ""
+    df['EDA_tracking'] = ""
+    df['ECG_tracking'] = ""
+    users = list(df['id'].unique())
+
+    for user in users:
+        user_df = df.loc[df['id'] == user]
+        #spo2
+        if user_df['spo2'].isnull().sum() == len(user_df):
+            df.loc[df['id'] == user, 'spo2_tracking'] = 0
+        else:
+            df.loc[df['id'] == user, 'spo2_tracking'] = 1
+        #EDA
+        if user_df['scl_avg'].isnull().sum() == len(user_df):
+            df.loc[df['id'] == user, 'EDA_tracking'] = 0
+        else:
+            df.loc[df['id'] == user, 'EDA_tracking'] = 1
+        #ECG
+        if user_df['heart_rate_alert'].isnull().sum() == len(user_df):
+            df.loc[df['id'] == user, 'ECG_tracking'] = 0
+        else:
+            df.loc[df['id'] == user, 'ECG_tracking'] = 1
+    return df
+
+# --------------------------------------------------------------------------- #
+
+def post_preprocessing(df):
+
+    df = use_EDA_SpO2_ECG(df)
+
+    categorical = ['mindfulness_session','age','gender', 'bmi', 'heart_rate_alert', 'DAILY_FLOORS', 'DAILY_STEPS', 
+               'GOAL_BASED_WEIGHT_LOSS', 'LIFETIME_DISTANCE', 'LIFETIME_FLOORS', 'LIFETIME_WEIGHT_GOAL_SETUP',
+               'Aerobic Workout', 'Bike', 'Bootcamp', 'Circuit Training', 'Elliptical','Hike', 'Interval Workout', 
+               'Martial Arts', 'Run', 'Spinning', 'Sport', 'Swim', 'Treadmill', 'Walk', 'Weights', 'Workout', 
+               'Yoga/Pilates']
+    
+    labels = ['label_ttm_stage','label_breq_self_determination', 
+               'label_sema_negative_feelings', 'label_ipip_extraversion_category', 'label_ipip_agreeableness_category',
+               'label_ipip_conscientiousness_category', 'label_ipip_stability_category','label_ipip_intellect_category', 
+               'label_stai_stress_category', 'label_panas_negative_affect']
+
+    # Replace outliers with NaNs separately for each column in the dataframe
+    columns = list(df.iloc[:, 2:].columns)  # excludes id and date
+    # exclude labels
+    for x in labels:
+        columns.remove(x)
+    # exclude categorical features
+    for x in categorical:
+        columns.remove(x)
+    for col in columns:
+        df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
+
+    # Replace NaN values with column's median for continuous features
+    columns = list(df.iloc[:, 2:].columns)  # excludes id and date 
+    # exclude labels
+    for x in labels:
+        columns.remove(x)
+    # exclude categorical features
+    for x in categorical:
+        columns.remove(x)
+    for col in columns:
+        df[col] = df[col].apply(pd.to_numeric, errors='coerce')
+        df[col] = df[col].fillna(df[col].median())
+
+    # Replace NaN values with column's more frequent occurrence for categorical features
+    for col in categorical:
+        df[col] = df[col].fillna(df[col].mode().iloc[0])
+    
+    return df
+
+# --------------------------------------------------------------------------- #
+
+# adds wear_day
+def f(row):
+    if row['steps'] < 500:
+        val = 0
+    else:
+        val = 1
+    return val
+
+# --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
 
@@ -104,99 +246,11 @@ def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas d
 
 # --------------------------------------------------------------------------- #
 
-# Pre-processing actions after merging the fitbit dataframe with a sema/survey
-
-def sin_transform(values):
-    """
-    Applies SIN transform to a series value.
-    Args:
-        values (pd.Series): A series to apply SIN transform on.
-    Returns
-        (pd.Series): The transformed series.
-    """
-
-    return np.sin(2 * np.pi * values / len(set(values)))
+# --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
 
-def cos_transform(values):
-    """
-    Applies COS transform to a series value.
-    Args:
-        values (pd.Series): A series to apply SIN transform on.
-    Returns
-        (pd.Series): The transformed series.
-    """
-    return np.cos(2 * np.pi * values / len(set(values)))
-
 # --------------------------------------------------------------------------- #
-
-def date_engineering(data):  # data could be any dataframe that needs date engineering
-
-    data['date'] = pd.to_datetime(data.date, format='%m/%d/%y %H:%M:%S')
-    data = data.astype({"date": str})
-
-    # Extract features from date
-    data["year"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').year)
-    data["month"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').month)
-    data["weekday"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').weekday())
-    data["week"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').isocalendar()[1])
-    data["day"] = data["date"].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').day)
-
-    # Sin transformation in date features
-    data["month_sin"] = sin_transform(data["month"])
-    data["weekday_sin"] = sin_transform(data["weekday"])
-    data["week_sin"] = sin_transform(data["week"])
-    data["day_sin"] = sin_transform(data["day"])
-
-    # Cosine transformation in date features
-    data["month_cos"] = cos_transform(data["month"])
-    data["weekday_cos"] = cos_transform(data["weekday"])
-    data["week_cos"] = cos_transform(data["week"])
-    data["day_cos"] = cos_transform(data["day"])
-
-    data = data.drop(columns=['date', 'year', 'month', 'weekday', 'week', 'day'])
-
-    return data
-
-# --------------------------------------------------------------------------- #
-
-def post_preprocessing(df):
-
-    # create the 3 new columns about spo2, scl_avg, heart_rate_alert before drop them
-    df = feature_engineering_functions.use_EDA_SpO2_ECG(df)
-
-    # Because of too many missing values in spo2 (80%), scl_avg (95%) and heart_rate_alert (99%), I drop these 3 columns
-    df = df.drop(columns=['spo2', 'scl_avg', "heart_rate_alert"])
-
-    binary_features = ["age", "gender", "bmi", "mindfulness_session", "Aerobic Workout", "Bike", "Bootcamp", "Circuit Training", "Elliptical",
-                       "Hike", "Interval Workout", "Martial Arts", "Run", "Spinning", "Sport", "Swim", "Treadmill", "Walk", "Weights",
-                       "Workout", "Yoga/Pilates", 'spo2_tracking', 'EDA_tracking', 'ECG_tracking']
-
-    # Replace outliers with NaNs
-    # separately for each column in the dataframe
-    columns = list(df.iloc[:, 2:].columns)  # excludes id and date columns
-    # exclude binary features
-    for x in binary_features:
-        columns.remove(x)
-    for col in columns:
-        df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
-
-    # Replace NaN values with column's median for non-binary features
-    columns = list(df.iloc[:, 2:].columns)  # excludes id and date columns
-    # exclude binary features
-    for x in binary_features:
-        columns.remove(x)
-    for col in columns:
-        df[col] = df[col].apply(pd.to_numeric, errors='coerce')
-        df[col] = df[col].fillna(df[col].median())
-
-    # Replace NaN values with column's more frequent occurrence for binary features
-    for col in binary_features:
-        df[col] = df[col].fillna(df[col].mode().iloc[0])
-    
-    return df
-
 
 # --------------------------------------------------------------------------- #
 
@@ -212,7 +266,6 @@ def train_test_split_per_user(data, train_size=0.7):
     return data[data.id.isin(users_train)], data[data.id.isin(users_test)]
 
 # --------------------------------------------------------------------------- #
-
 
 # --------------------------------------------------------------------------- #
 
