@@ -1,3 +1,5 @@
+import warnings
+
 import holidays
 import pandas as pd
 import datetime
@@ -72,14 +74,14 @@ def use_during_sleep(data):
         data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
     return data
 
-
+# Creates a new column with True for weekend dates and False for weekdays
 def is_weekend(df):
     df.date = pd.to_datetime(df.date, infer_datetime_format=True)
     df.loc[:, "is_weekend"] = df.date.dt.dayofweek  # returns 0-4 for Monday-Friday and 5-6 for Weekend
     df.is_weekend = df.is_weekend > 4
     return df
 
-
+# Creates a new column with True if the date is a public holiday in Greece, Cyprus, Sweden or Italy, False otherwise
 def is_holiday(df):
     gr_holidays = list(holidays.GR(years=[2021, 2022]).keys())
     swe_holdidays = list(holidays.SWE(years=[2021, 2022]).keys())
@@ -90,3 +92,20 @@ def is_holiday(df):
             (d in gr_holidays) or (d in swe_holdidays) or (d in cy_holidays) or (d in it_holidays)) else False)
 
     return df
+
+
+def interdaily_stability(data, column_name=None):
+    r"""Calculate the interdaily stability"""
+    if not column_name:
+        warnings.warn("WARNING: No column name passed, returning unprocessed dataframe.")
+        return data
+
+    d_24h = data.groupby([
+        data.index.hour,
+        data.index.minute,
+        data.index.second]
+    ).mean().var()
+
+    d_1h = data.var()
+
+    return (d_24h / d_1h)
