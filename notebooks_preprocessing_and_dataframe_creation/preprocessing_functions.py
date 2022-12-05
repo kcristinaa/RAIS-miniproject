@@ -3,8 +3,8 @@ import statistics
 import numpy as np
 import pandas as pd
 from datetime import datetime
-
 from pymongo import MongoClient
+from notebooks_feature_engineering import feature_engineering_functions
 
 
 # --------------------------------------------------------------------------- #
@@ -168,41 +168,12 @@ def one_hot_encoding(fitbit):
 
 # --------------------------------------------------------------------------- #
 
-# Creates 1 column that represent if a user has tracked at least once its spo2 or eda or ecg
-
-def use_EDA_SpO2_ECG(df):
-    df['spo2_tracking'] = ""
-    df['EDA_tracking'] = ""
-    df['ECG_tracking'] = ""
-    users = list(df['id'].unique())
-
-    for user in users:
-        user_df = df.loc[df['id'] == user]
-        # spo2
-        if user_df['spo2'].isnull().sum() == len(user_df):
-            df.loc[df['id'] == user, 'spo2_tracking'] = 0
-        else:
-            df.loc[df['id'] == user, 'spo2_tracking'] = 1
-        # EDA
-        if user_df['scl_avg'].isnull().sum() == len(user_df):
-            df.loc[df['id'] == user, 'EDA_tracking'] = 0
-        else:
-            df.loc[df['id'] == user, 'EDA_tracking'] = 1
-        # ECG
-        if user_df['heart_rate_alert'].isnull().sum() == len(user_df):
-            df.loc[df['id'] == user, 'ECG_tracking'] = 0
-        else:
-            df.loc[df['id'] == user, 'ECG_tracking'] = 1
-
-    df['early_features'] = np.where((df['spo2_tracking'] == 1) | (df['EDA_tracking'] == 1) | (df['ECG_tracking'] == 1), 1, 0)
-    df = df.drop(columns=['spo2_tracking', 'EDA_tracking', 'ECG_tracking'])
-    return df
-
-
 # --------------------------------------------------------------------------- #
 
 def post_preprocessing(df):
-    df = use_EDA_SpO2_ECG(df)
+    df = feature_engineering_functions.use_EDA_SpO2_ECG(df)
+
+    df = feature_engineering_functions.use_during_sleep(df)
 
     categorical = ['mindfulness_session', 'age', 'gender', 'bmi', 'heart_rate_alert', 'DAILY_FLOORS', 'DAILY_STEPS',
                    'GOAL_BASED_WEIGHT_LOSS', 'LIFETIME_DISTANCE', 'LIFETIME_FLOORS', 'LIFETIME_WEIGHT_GOAL_SETUP',
@@ -216,7 +187,7 @@ def post_preprocessing(df):
               'label_stai_stress_category', 'label_panas_negative_affect']
 
     # Replace outliers with NaNs separately for each column in the dataframe
-    columns = list(df.iloc[:, 2:].columns)  # excludes id and date
+    columns = list(df.iloc[:, 2:-2].columns)  # excludes id, date, early_features and used_while_sleep
     # exclude labels
     for x in labels:
         columns.remove(x)
@@ -229,7 +200,7 @@ def post_preprocessing(df):
         df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
 
     # Replace NaN values with column's median for continuous features
-    columns = list(df.iloc[:, 2:].columns)  # excludes id and date 
+    columns = list(df.iloc[:, 2:-2].columns)  # excludes id, date, early_features and used_while_sleep
     # exclude labels
     for x in labels:
         columns.remove(x)
