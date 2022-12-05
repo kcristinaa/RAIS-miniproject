@@ -1,8 +1,8 @@
 import warnings
-
 import holidays
-import pandas as pd
 import datetime
+import numpy as np
+import pandas as pd
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -40,6 +40,10 @@ def use_EDA_SpO2_ECG(df):
             df.loc[df['id'] == user, 'ECG_tracking'] = 0
         else:
             df.loc[df['id'] == user, 'ECG_tracking'] = 1
+
+    df['early_features'] = np.where((df['spo2_tracking'] == 1) | (df['EDA_tracking'] == 1) | (df['ECG_tracking'] == 1), 1, 0)
+    df = df.drop(columns=['spo2_tracking', 'EDA_tracking', 'ECG_tracking'])
+
     return df
 
 
@@ -73,6 +77,24 @@ def use_during_sleep(data):
         days_used = len(user_df)
         data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
     return data
+
+
+# Creates a new column that represents how many (different) badge types a user has gain
+def different_badge_types(data):
+    users = list(data['id'].unique())
+    data['different_badge_types'] = ""
+    for user in users:
+        different_types = 0
+        user_data = data.loc[data['id'] == user]
+        user_data = user_data.loc[:, 'DAILY_FLOORS':'LIFETIME_WEIGHT_GOAL_SETUP']
+
+        cols = user_data.columns
+        for col in cols:
+            if 1.0 in user_data[col].values:
+                different_types = different_types + 1
+        data.loc[data['id'] == user, 'different_badge_types'] = different_types
+    return data
+
 
 # Creates a new column with True for weekend dates and False for weekdays
 def is_weekend(df):
