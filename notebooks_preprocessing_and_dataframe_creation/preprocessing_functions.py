@@ -31,14 +31,14 @@ def fitbit_basic_preprocessing(df):
 
 
 # Adding sleep startTime and endTime columns to the dataframe
-def fitbit_intraday_sleep(df):
+def fitbit_intraday_sleep(df, db_name):
     # setup mongo connection for reading extra data
     with open('.\\..\\credentials.json') as f:
         data = json.load(f)
         username = data['username']
         password = data['password']
     client = MongoClient('mongodb://%s:%s@127.0.0.1' % (username, password))
-    db = client.rais_anonymized
+    db = client[db_name]
     col = db.fitbit
 
     # read intra-day data from Mongo
@@ -249,6 +249,7 @@ def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas d
     for user in users:
         user_survey = survey.loc[survey['id'] == user]
         user_fitbit = fitbit.loc[fitbit['id'] == user]
+        bmi = user_fitbit['bmi'].iloc[0]
         fitbit_survey = pd.concat([fitbit_survey, user_survey], ignore_index=True)
         for day in list(user_survey['date']):
             weekly_fitbit = user_fitbit.loc[user_fitbit['date'] < day]
@@ -259,6 +260,8 @@ def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas d
             for column in cols:
                 fitbit_survey.loc[(fitbit_survey.id == user) & (fitbit_survey.date == day), column] = statistics.median(
                     list(weekly_fitbit[column]))
+        fitbit_survey.loc[(fitbit_survey.id == user), 'bmi'] = bmi
+
     fitbit_survey["date"] = pd.to_datetime(pd.to_datetime(fitbit_survey["date"]).dt.date)
 
     return fitbit_survey
