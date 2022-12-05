@@ -168,7 +168,7 @@ def one_hot_encoding(fitbit):
 
 # --------------------------------------------------------------------------- #
 
-# Creates 3 columns that represent if a user has tracked at least once its spo2 or eda or ecg
+# Creates 1 column that represent if a user has tracked at least once its spo2 or eda or ecg
 
 def use_EDA_SpO2_ECG(df):
     df['spo2_tracking'] = ""
@@ -193,6 +193,9 @@ def use_EDA_SpO2_ECG(df):
             df.loc[df['id'] == user, 'ECG_tracking'] = 0
         else:
             df.loc[df['id'] == user, 'ECG_tracking'] = 1
+
+    df['early_features'] = np.where((df['spo2_tracking'] == 1) | (df['EDA_tracking'] == 1) | (df['ECG_tracking'] == 1), 1, 0)
+    df = df.drop(columns=['spo2_tracking', 'EDA_tracking', 'ECG_tracking'])
     return df
 
 
