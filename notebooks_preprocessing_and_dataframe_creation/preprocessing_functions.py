@@ -170,10 +170,12 @@ def one_hot_encoding(fitbit):
 
 # --------------------------------------------------------------------------- #
 
-def post_preprocessing(df):
+def post_preprocessing(df, frequency):
     df = feature_engineering_functions.use_EDA_SpO2_ECG(df)
 
     df = feature_engineering_functions.use_during_sleep(df)
+
+    date_features = ["month_sin", "weekday_sin", "week_sin", "day_sin", "month_cos", "weekday_cos", "week_cos", "day_cos"]
 
     categorical = ['mindfulness_session', 'age', 'gender', 'bmi', 'heart_rate_alert', 'DAILY_FLOORS', 'DAILY_STEPS',
                    'GOAL_BASED_WEIGHT_LOSS', 'LIFETIME_DISTANCE', 'LIFETIME_FLOORS', 'LIFETIME_WEIGHT_GOAL_SETUP',
@@ -181,13 +183,20 @@ def post_preprocessing(df):
                    'Martial Arts', 'Run', 'Spinning', 'Sport', 'Swim', 'Treadmill', 'Walk', 'Weights', 'Workout',
                    'Yoga/Pilates']
 
-    labels = ['label_ttm_stage', 'label_breq_self_determination',
-              'label_sema_negative_feelings', 'label_ipip_extraversion_category', 'label_ipip_agreeableness_category',
-              'label_ipip_conscientiousness_category', 'label_ipip_stability_category', 'label_ipip_intellect_category',
-              'label_stai_stress_category', 'label_panas_negative_affect']
+    if frequency == 'daily':
+        labels = ['label_ttm_stage', 'label_breq_self_determination',
+                  'label_sema_negative_feelings', 'label_ipip_extraversion_category', 'label_ipip_agreeableness_category',
+                  'label_ipip_conscientiousness_category', 'label_ipip_stability_category', 'label_ipip_intellect_category',
+                  'label_stai_stress_category', 'label_panas_negative_affect']
+    else:
+        labels = ["label_panas_negative_affect", "label_stai_stress_category"]
+        df = df.drop(columns=["minutesToFallAsleep"])
 
     # Replace outliers with NaNs separately for each column in the dataframe
-    columns = list(df.iloc[:, 2:-2].columns)  # excludes id, date, early_features and used_while_sleep
+    columns = list(df.iloc[:, 2:-3].columns)  # excludes id, date, wear_day, early_features and used_while_sleep
+    # exclude date features
+    for x in date_features:
+        columns.remove(x)
     # exclude labels
     for x in labels:
         columns.remove(x)
@@ -200,7 +209,10 @@ def post_preprocessing(df):
         df[col] = df[col].mask(df[col].sub(df[col].mean()).div(df[col].std()).abs().gt(3))
 
     # Replace NaN values with column's median for continuous features
-    columns = list(df.iloc[:, 2:-2].columns)  # excludes id, date, early_features and used_while_sleep
+    columns = list(df.iloc[:, 2:-3].columns)  # excludes id, date, wear_day, early_features and used_while_sleep
+    # exclude date features
+    for x in date_features:
+        columns.remove(x)
     # exclude labels
     for x in labels:
         columns.remove(x)
