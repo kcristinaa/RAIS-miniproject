@@ -3,6 +3,8 @@ import holidays
 import datetime
 import numpy as np
 import pandas as pd
+from scipy.stats import stats
+
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -13,6 +15,7 @@ def f(row):
     else:
         val = 1
     return val
+
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -41,7 +44,8 @@ def use_EDA_SpO2_ECG(df):
         else:
             df.loc[df['id'] == user, 'ECG_tracking'] = 1
 
-    df['early_features'] = np.where((df['spo2_tracking'] == 1) | (df['EDA_tracking'] == 1) | (df['ECG_tracking'] == 1), 1, 0)
+    df['early_features'] = np.where((df['spo2_tracking'] == 1) | (df['EDA_tracking'] == 1) | (df['ECG_tracking'] == 1),
+                                    1, 0)
     df = df.drop(columns=['spo2_tracking', 'EDA_tracking', 'ECG_tracking'])
 
     return df
@@ -103,6 +107,7 @@ def is_weekend(df):
     df.is_weekend = df.is_weekend > 4
     return df
 
+
 # Creates a new column with True if the date is a public holiday in Greece, Cyprus, Sweden or Italy, False otherwise
 def is_holiday(df):
     gr_holidays = list(holidays.GR(years=[2021, 2022]).keys())
@@ -131,3 +136,49 @@ def interdaily_stability(data, column_name=None):
     d_1h = data.var()
 
     return (d_24h / d_1h)
+
+
+def intradaily_variability(data, column_name=None):
+    r"""Calculate the intradaily variability"""
+    if not column_name:
+        warnings.warn("WARNING: No column name passed, returning unprocessed dataframe.")
+        return data
+
+    c_1h = data.diff(1).pow(2).mean()
+
+    d_1h = data.var()
+
+    return (c_1h / d_1h)
+
+
+def social_jet_lag(data):
+    # split weekend and weekdays
+    data = is_weekend(data)
+    data.startTime = pd.to_datetime(data.startTime)
+    data.loc[:, 'startHour'] = data.startTime.dt.hour
+
+    w = data.loc[data.is_weekend == False, :]
+    f = data.loc[data.is_weekend == True, :]
+
+    so_w = stats.mode(w.startHour, keepdims=True).mode[0]
+    so_f = stats.mode(f.startHour, keepdims=True).mode[0]
+
+    so_diff = so_f - so_w
+    # if any sleep time is after 00:00 the calculation is slightly different
+    if abs(so_diff) > 8:
+        if so_diff < 0:
+            so_diff = 24 - abs(so_diff)
+        else:
+            so_diff = - (24 - so_diff)
+
+    sd_w = np.mean(w.sleep_duration) / 3600000
+    sd_f = np.mean(f.sleep_duration) / 3600000
+
+    sjl = so_diff + 0.5 * (sd_f - sd_w)
+    return sjl
+
+
+
+
+
+
