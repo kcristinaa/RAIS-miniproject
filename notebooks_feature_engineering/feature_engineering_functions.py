@@ -99,6 +99,8 @@ def different_badge_types(data):
         data.loc[data['id'] == user, 'different_badge_types'] = different_types
     return data
 
+# ----------------------------------------------------------------------------------------------- #
+
 
 # Creates a new column with True for weekend dates and False for weekdays
 def is_weekend(df):
@@ -119,6 +121,39 @@ def is_holiday(df):
             (d in gr_holidays) or (d in swe_holdidays) or (d in cy_holidays) or (d in it_holidays)) else False)
 
     return df
+
+# ----------------------------------------------------------------------------------------------- #
+
+
+def social_jet_lag(data):
+    # split weekend and weekdays
+    data = is_weekend(data)
+    data.startTime = pd.to_datetime(data.startTime)
+    data.loc[:, 'startHour'] = data.startTime.dt.hour
+
+    w = data.loc[data.is_weekend == False, :]
+    f = data.loc[data.is_weekend == True, :]
+
+    so_w = stats.mode(w.startHour, keepdims=True).mode[0]
+    so_f = stats.mode(f.startHour, keepdims=True).mode[0]
+
+    so_diff = so_f - so_w
+    # if any sleep time is after 00:00 the calculation is slightly different
+    if abs(so_diff) > 8:
+        if so_diff < 0:
+            so_diff = 24 - abs(so_diff)
+        else:
+            so_diff = - (24 - so_diff)
+
+    sd_w = np.mean(w.sleep_duration) / 3600000
+    sd_f = np.mean(f.sleep_duration) / 3600000
+
+    sjl = so_diff + 0.5 * (sd_f - sd_w)
+    return sjl
+
+# ----------------------------------------------------------------------------------------------- #
+
+# CODE FROM pyActigraphy PACKAGE
 
 
 def interdaily_stability(data, column_name=None):
@@ -149,33 +184,6 @@ def intradaily_variability(data, column_name=None):
     d_1h = data.var()
 
     return (c_1h / d_1h)
-
-
-def social_jet_lag(data):
-    # split weekend and weekdays
-    data = is_weekend(data)
-    data.startTime = pd.to_datetime(data.startTime)
-    data.loc[:, 'startHour'] = data.startTime.dt.hour
-
-    w = data.loc[data.is_weekend == False, :]
-    f = data.loc[data.is_weekend == True, :]
-
-    so_w = stats.mode(w.startHour, keepdims=True).mode[0]
-    so_f = stats.mode(f.startHour, keepdims=True).mode[0]
-
-    so_diff = so_f - so_w
-    # if any sleep time is after 00:00 the calculation is slightly different
-    if abs(so_diff) > 8:
-        if so_diff < 0:
-            so_diff = 24 - abs(so_diff)
-        else:
-            so_diff = - (24 - so_diff)
-
-    sd_w = np.mean(w.sleep_duration) / 3600000
-    sd_f = np.mean(f.sleep_duration) / 3600000
-
-    sjl = so_diff + 0.5 * (sd_f - sd_w)
-    return sjl
 
 
 def prob_stability(ts, threshold):
