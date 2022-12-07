@@ -126,6 +126,15 @@ def is_holiday(df):
 
 
 # ----------------------------------------------------------------------------------------------- #
+def hour_diff(so_f, so_w):
+    so_diff = so_f - so_w
+    # if any sleep time is after 00:00 the calculation is slightly different
+    if abs(so_diff) > 8:
+        if so_diff < 0:
+            so_diff = 24 - abs(so_diff)
+        else:
+            so_diff = - (24 - so_diff)
+    return so_diff
 
 
 def social_jet_lag(data):
@@ -140,13 +149,7 @@ def social_jet_lag(data):
     so_w = stats.mode(w.startHour, keepdims=True).mode[0]
     so_f = stats.mode(f.startHour, keepdims=True).mode[0]
 
-    so_diff = so_f - so_w
-    # if any sleep time is after 00:00 the calculation is slightly different
-    if abs(so_diff) > 8:
-        if so_diff < 0:
-            so_diff = 24 - abs(so_diff)
-        else:
-            so_diff = - (24 - so_diff)
+    so_diff = hour_diff(so_f, so_w)
 
     sd_w = np.mean(w.sleep_duration) / 3600000
     sd_f = np.mean(f.sleep_duration) / 3600000
@@ -273,6 +276,34 @@ def ISp(data, period='7D', freq='1H', binarize=True, threshold=4, verbose=False)
     results.append(intervals)
     return results
 
+
+def get_mode_sleep_per_user(user_id, df_user):
+    df_user.loc[:, 'startHour'] = df_user.startTime.dt.hour
+    df_user.loc[:, 'endHour'] = df_user.endTime.dt.hour
+    mode_sleep_time = stats.mode(df_user.startHour, keepdims=True).mode[0]
+    mode_awake_time = stats.mode(df_user.endHour, keepdims=True).mode[0]
+    row = pd.Series([user_id, mode_sleep_time, mode_awake_time], index=['id', 'mode_startTime', 'mode_endTime'])
+    return row
+
+
+def get_variability_per_day(df_sleep):
+    # read sleep modes
+    dir = ".\\..\\data\\user_level_data"
+    sleep_times = pd.read_pickle(os.path.join(dir, 'sleep_variability.pkl'))
+    # add temporary variables required for computation
+    df_sleep.loc[:, 'startHour'] = df_sleep.startTime.dt.hour
+    df_sleep.loc[:, 'endHour'] = df_sleep.endTime.dt.hour
+    # df_sleep = df_sleep.merge(sleep_times[['mode_startTime', 'mode_endTime', 'id']], on='id', how='left')
+    # compute difference
+    df_sleep.loc[:, 'variability_startTime'] = df_sleep.apply(lambda row: hour_diff(row.startHour, row.mode_startTime),
+                                                              axis=1)
+    df_sleep.loc[:, 'variability_endTime'] = df_sleep.apply(lambda row: hour_diff(row.endHour, row.mode_endTime),
+                                                            axis=1)
+    # drop temporary variables
+    df_sleep.drop(['startHour', 'endHour', 'mode_startTime', 'mode_endTime'], axis=1, inplace=True)
+    return df_sleep
+
+
 # Sinlge function to integrate all sleep indices
 def add_sleep_regularity_indices(data):
     dir = ".\\..\\data\\user_level_data"
@@ -284,11 +315,16 @@ def add_sleep_regularity_indices(data):
     users_iv = pd.read_pickle(os.path.join(dir, "iv_index.pkl"))
     users_sjl = pd.read_pickle(os.path.join(dir, "sjl_index.pkl"))
     users_sri = pd.read_pickle(os.path.join(dir, "sri_index.pkl"))
+    users_sleep_variability = pd.read_pickle(os.path.join(dir, "sleep_variability.pkl"))
 
     merged = data.merge(users_is, on='id', how='left')
     merged = merged.merge(users_iv, on='id', how='left')
     merged = merged.merge(users_sjl, on='id', how='left')
     merged = merged.merge(users_sri, on='id', how='left')
+    merged = merged.merge(users_sleep_variability, on='id', how='left')
+
+    merged = get_variability_per_day(merged)
+    # merged.drop(['mode_startTime', 'mode_endTime'], axis=1, inplace=True)
 
     # add ISP per week
     merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
