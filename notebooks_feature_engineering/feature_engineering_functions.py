@@ -295,4 +295,6 @@ def add_sleep_regularity_indices(data):
     merged = merged.sort_values(by=['id', 'date'])
     merged.isp_index = merged.isp_index.ffill(limit=6)
 
+    merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
+
     return merged
