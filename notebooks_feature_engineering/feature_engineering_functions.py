@@ -1,3 +1,4 @@
+import os
 import warnings
 import holidays
 import datetime
@@ -99,6 +100,7 @@ def different_badge_types(data):
         data.loc[data['id'] == user, 'different_badge_types'] = different_types
     return data
 
+
 # ----------------------------------------------------------------------------------------------- #
 
 
@@ -122,7 +124,17 @@ def is_holiday(df):
 
     return df
 
+
 # ----------------------------------------------------------------------------------------------- #
+def hour_diff(so_f, so_w):
+    so_diff = so_f - so_w
+    # if any sleep time is after 00:00 the calculation is slightly different
+    if abs(so_diff) > 8:
+        if so_diff < 0:
+            so_diff = 24 - abs(so_diff)
+        else:
+            so_diff = - (24 - so_diff)
+    return so_diff
 
 
 def social_jet_lag(data):
@@ -137,13 +149,7 @@ def social_jet_lag(data):
     so_w = stats.mode(w.startHour, keepdims=True).mode[0]
     so_f = stats.mode(f.startHour, keepdims=True).mode[0]
 
-    so_diff = so_f - so_w
-    # if any sleep time is after 00:00 the calculation is slightly different
-    if abs(so_diff) > 8:
-        if so_diff < 0:
-            so_diff = 24 - abs(so_diff)
-        else:
-            so_diff = - (24 - so_diff)
+    so_diff = hour_diff(so_f, so_w)
 
     sd_w = np.mean(w.sleep_duration) / 3600000
     sd_f = np.mean(f.sleep_duration) / 3600000
@@ -151,16 +157,14 @@ def social_jet_lag(data):
     sjl = so_diff + 0.5 * (sd_f - sd_w)
     return sjl
 
+
 # ----------------------------------------------------------------------------------------------- #
 
 # CODE FROM pyActigraphy PACKAGE
 
 
-def interdaily_stability(data, column_name=None):
+def interdaily_stability(data, column_name='sleep'):
     r"""Calculate the interdaily stability"""
-    if not column_name:
-        warnings.warn("WARNING: No column name passed, returning unprocessed dataframe.")
-        return data
 
     d_24h = data.groupby([
         data.index.hour,
@@ -170,14 +174,16 @@ def interdaily_stability(data, column_name=None):
 
     d_1h = data.var()
 
-    return (d_24h / d_1h)
+    try:
+        is_index = (d_24h[column_name] / d_1h[column_name])
+    except:
+        is_index = (d_24h / d_1h)
+
+    return is_index
 
 
-def intradaily_variability(data, column_name=None):
+def intradaily_variability(data):
     r"""Calculate the intradaily variability"""
-    if not column_name:
-        warnings.warn("WARNING: No column name passed, returning unprocessed dataframe.")
-        return data
 
     c_1h = data.diff(1).pow(2).mean()
 
@@ -196,7 +202,7 @@ def prob_stability(ts, threshold):
     # Compute stability as $\delta(s_i,s_{i+1}) = 1$ if $s_i = s_{i+}$
     # Two consecutive values are equal if the 1st order diff is equal to zero.
     # The 1st order diff is either +1 or -1 otherwise.
-    prob = np.mean(1-np.abs(np.diff(data)))
+    prob = np.mean(1 - np.abs(np.diff(data)))
 
     return prob
 
@@ -229,12 +235,102 @@ def sri(data, threshold=None):
     sri_prof = sri_profile(data, threshold)
 
     # Calculate SRI coefficient
-    sri_coef = 200*np.mean(sri_prof.values)-100
+    sri_coef = 200 * np.mean(sri_prof.values) - 100
 
     return sri_coef
 
 
+def interval_maker(index, period, verbose):
+    (num_periods, td) = divmod(
+        (index[-1] - index[0]), pd.Timedelta(period)
+    )
+    if verbose:
+        print("Number of periods: {0}\n Time unaccounted for: {1}".format(
+            num_periods,
+            '{} days, {}h, {}m, {}s'.format(
+                td.days,
+                td.seconds // 3600,
+                (td.seconds // 60) % 60,
+                td.seconds % 60
+            )
+        ))
+
+    intervals = [(
+        index[0] + (i) * pd.Timedelta(period),
+        index[0] + (i + 1) * pd.Timedelta(period))
+        for i in range(0, num_periods)
+    ]
+
+    return intervals
 
 
+def ISp(data, period='7D', freq='1H', binarize=True, threshold=4, verbose=False):
+    # data = resampled_data(freq, binarize, threshold)
+
+    intervals = interval_maker(data.index, period, verbose)
+
+    results = [
+        interdaily_stability(data[time[0]:time[1]]) for time in intervals
+    ]
+
+    results.append(intervals)
+    return results
 
 
+def get_mode_sleep_per_user(user_id, df_user):
+    df_user.loc[:, 'startHour'] = df_user.startTime.dt.hour
+    df_user.loc[:, 'endHour'] = df_user.endTime.dt.hour
+    mode_sleep_time = stats.mode(df_user.startHour, keepdims=True).mode[0]
+    mode_awake_time = stats.mode(df_user.endHour, keepdims=True).mode[0]
+    row = pd.Series([user_id, mode_sleep_time, mode_awake_time], index=['id', 'mode_startTime', 'mode_endTime'])
+    return row
+
+
+def get_variability_per_day(df_sleep):
+    # read sleep modes
+    dir = ".\\..\\data\\user_level_data"
+    sleep_times = pd.read_pickle(os.path.join(dir, 'sleep_variability.pkl'))
+    # add temporary variables required for computation
+    df_sleep.loc[:, 'startHour'] = df_sleep.startTime.dt.hour
+    df_sleep.loc[:, 'endHour'] = df_sleep.endTime.dt.hour
+    # df_sleep = df_sleep.merge(sleep_times[['mode_startTime', 'mode_endTime', 'id']], on='id', how='left')
+    # compute difference
+    df_sleep.loc[:, 'variability_startTime'] = df_sleep.apply(lambda row: hour_diff(row.startHour, row.mode_startTime),
+                                                              axis=1)
+    df_sleep.loc[:, 'variability_endTime'] = df_sleep.apply(lambda row: hour_diff(row.endHour, row.mode_endTime),
+                                                            axis=1)
+    # drop temporary variables
+    df_sleep.drop(['startHour', 'endHour', 'mode_startTime', 'mode_endTime'], axis=1, inplace=True)
+    return df_sleep
+
+
+# Sinlge function to integrate all sleep indices
+def add_sleep_regularity_indices(data):
+    dir = ".\\..\\data\\user_level_data"
+
+    data.date = pd.to_datetime(data.date)  # convert to datetime
+    # indices
+    users_isp = pd.read_pickle(os.path.join(dir, "isp_index.pkl"))
+    users_is = pd.read_pickle(os.path.join(dir, "is_index.pkl"))
+    users_iv = pd.read_pickle(os.path.join(dir, "iv_index.pkl"))
+    users_sjl = pd.read_pickle(os.path.join(dir, "sjl_index.pkl"))
+    users_sri = pd.read_pickle(os.path.join(dir, "sri_index.pkl"))
+    users_sleep_variability = pd.read_pickle(os.path.join(dir, "sleep_variability.pkl"))
+
+    merged = data.merge(users_is, on='id', how='left')
+    merged = merged.merge(users_iv, on='id', how='left')
+    merged = merged.merge(users_sjl, on='id', how='left')
+    merged = merged.merge(users_sri, on='id', how='left')
+    merged = merged.merge(users_sleep_variability, on='id', how='left')
+
+    merged = get_variability_per_day(merged)
+    # merged.drop(['mode_startTime', 'mode_endTime'], axis=1, inplace=True)
+
+    # add ISP per week
+    merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
+    merged = merged.sort_values(by=['id', 'date'])
+    merged.isp_index = merged.isp_index.ffill(limit=6)
+
+    merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
+
+    return merged
