@@ -273,7 +273,7 @@ def ISp(data, period='7D', freq='1H', binarize=True, threshold=4, verbose=False)
     results.append(intervals)
     return results
 
-
+# Sinlge function to integrate all sleep indices
 def add_sleep_regularity_indices(data):
     dir = ".\\..\\data\\user_level_data"
 
