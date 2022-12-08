@@ -334,3 +334,9 @@ def add_sleep_regularity_indices(data):
     merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
 
     return merged
+
+# Sinlge function to integrate all steps and exercise indices
+
+
+
+
