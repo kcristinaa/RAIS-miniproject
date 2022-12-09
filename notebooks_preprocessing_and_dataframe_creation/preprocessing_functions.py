@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from pymongo import MongoClient
-from notebooks_feature_engineering import feature_engineering_functions
 
 
 # --------------------------------------------------------------------------- #
@@ -169,11 +168,58 @@ def one_hot_encoding(fitbit):
 # --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
+# Creates 2 columns that represent if a user has tracked at least once its spo2 or eda
+def use_EDA_SpO2_ECG(df):
+    df['spo2_tracking'] = ""
+    df['EDA_tracking'] = ""
+    df['ECG_tracking'] = ""
+    users = list(df['id'].unique())
+
+    for user in users:
+        user_df = df.loc[df['id'] == user]
+        # spo2
+        if user_df['spo2'].isnull().sum() == len(user_df):
+            df.loc[df['id'] == user, 'spo2_tracking'] = 0
+        else:
+            df.loc[df['id'] == user, 'spo2_tracking'] = 1
+        # EDA
+        if user_df['scl_avg'].isnull().sum() == len(user_df):
+            df.loc[df['id'] == user, 'EDA_tracking'] = 0
+        else:
+            df.loc[df['id'] == user, 'EDA_tracking'] = 1
+        # ECG
+        if user_df['heart_rate_alert'].isnull().sum() == len(user_df):
+            df.loc[df['id'] == user, 'ECG_tracking'] = 0
+        else:
+            df.loc[df['id'] == user, 'ECG_tracking'] = 1
+
+    df['early_features'] = np.where((df['spo2_tracking'] == 1) | (df['EDA_tracking'] == 1) | (df['ECG_tracking'] == 1),
+                                    1, 0)
+    df = df.drop(columns=['spo2_tracking', 'EDA_tracking', 'ECG_tracking'])
+
+    return df 
+
+# Creates a new column with the percentage of fitbit usage while sleeping for each user
+def use_during_sleep(data):
+    users = list(data['id'].unique())
+    data['used_during_night'] = ""
+    for user in users:
+        user_df = data.loc[data['id'] == user]
+        user_df = user_df[["nightly_temperature", "full_sleep_breathing_rate", "sleep_duration", "minutesToFallAsleep",
+                           "minutesAsleep", "minutesAwake", "minutesAfterWakeup", "sleep_efficiency",
+                           "sleep_deep_ratio", "sleep_wake_ratio", "sleep_light_ratio", "sleep_rem_ratio"]]
+        all_days = len(user_df)
+        user_df = user_df.dropna(how='all')
+        days_used = len(user_df)
+        data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
+    return data
+
+
 
 def post_preprocessing(df, frequency):
-    df = feature_engineering_functions.use_EDA_SpO2_ECG(df)
+    df = use_EDA_SpO2_ECG(df)
 
-    df = feature_engineering_functions.use_during_sleep(df)
+    df = use_during_sleep(df)
 
     date_features = ["month_sin", "weekday_sin", "week_sin", "day_sin", "month_cos", "weekday_cos", "week_cos", "day_cos"]
 

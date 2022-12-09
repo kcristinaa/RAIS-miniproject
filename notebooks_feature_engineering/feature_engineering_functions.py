@@ -307,7 +307,7 @@ def get_variability_per_day(df_sleep):
 # Sinlge function to integrate all sleep indices
 def add_sleep_regularity_indices(data):
     dir = ".\\..\\data\\user_level_data"
-
+    
     data.date = pd.to_datetime(data.date)  # convert to datetime
     # indices
     users_isp = pd.read_pickle(os.path.join(dir, "isp_index.pkl"))
@@ -335,7 +335,28 @@ def add_sleep_regularity_indices(data):
 
     return merged
 
-# Sinlge function to integrate all steps and exercise indices
+# Sinlge function to integrate all step indices
+def add_steps_regularity_indices(data):
+
+    data.date = pd.to_datetime(data.date)  # convert to datetime
+    # indices
+    users_is = pd.read_pickle('../data/steps_indices/steps_is_index')
+    users_isp = pd.read_pickle('../data/steps_indices/steps_isp_index')
+    users_iv = pd.read_pickle('../data/steps_indices/steps_iv_index')
+    users_sri = pd.read_pickle('../data/steps_indices/steps_sri_index')
+
+    merged = data.merge(users_is, on='id', how='left')
+    merged = merged.merge(users_iv, on='id', how='left')
+    merged = merged.merge(users_sri, on='id', how='left')
+
+    # add ISP per week
+    merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
+    merged = merged.sort_values(by=['id', 'date'])
+    merged.steps_isp_index = merged.steps_isp_index.ffill(limit=6)
+
+    merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
+
+    return merged
 
 
 
