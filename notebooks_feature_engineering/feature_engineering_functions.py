@@ -8,49 +8,7 @@ from scipy.stats import stats
 
 
 # ----------------------------------------------------------------------------------------------- #
-
-# adds wear_day
-def f(row):
-    if row['steps'] < 500:
-        val = 0
-    else:
-        val = 1
-    return val
-
-
-# ----------------------------------------------------------------------------------------------- #
-
-# Creates 2 columns that represent if a user has tracked at least once its spo2 or eda
-def use_EDA_SpO2_ECG(df):
-    df['spo2_tracking'] = ""
-    df['EDA_tracking'] = ""
-    df['ECG_tracking'] = ""
-    users = list(df['id'].unique())
-
-    for user in users:
-        user_df = df.loc[df['id'] == user]
-        # spo2
-        if user_df['spo2'].isnull().sum() == len(user_df):
-            df.loc[df['id'] == user, 'spo2_tracking'] = 0
-        else:
-            df.loc[df['id'] == user, 'spo2_tracking'] = 1
-        # EDA
-        if user_df['scl_avg'].isnull().sum() == len(user_df):
-            df.loc[df['id'] == user, 'EDA_tracking'] = 0
-        else:
-            df.loc[df['id'] == user, 'EDA_tracking'] = 1
-        # ECG
-        if user_df['heart_rate_alert'].isnull().sum() == len(user_df):
-            df.loc[df['id'] == user, 'ECG_tracking'] = 0
-        else:
-            df.loc[df['id'] == user, 'ECG_tracking'] = 1
-
-    df['early_features'] = np.where((df['spo2_tracking'] == 1) | (df['EDA_tracking'] == 1) | (df['ECG_tracking'] == 1),
-                                    1, 0)
-    df = df.drop(columns=['spo2_tracking', 'EDA_tracking', 'ECG_tracking'])
-
-    return df
-
+# Add new features
 
 # Creates a new column that represents how many (different) activity types a user has done
 def different_activity_types(data):
@@ -65,22 +23,6 @@ def different_activity_types(data):
             if 1.0 in user_data[col].values:
                 different_types = different_types + 1
         data.loc[data['id'] == user, 'different_activity_types'] = different_types
-    return data
-
-
-# Creates a new column with the percentage of fitbit usage while sleeping for each user
-def use_during_sleep(data):
-    users = list(data['id'].unique())
-    data['used_during_night'] = ""
-    for user in users:
-        user_df = data.loc[data['id'] == user]
-        user_df = user_df[["nightly_temperature", "full_sleep_breathing_rate", "sleep_duration", "minutesToFallAsleep",
-                           "minutesAsleep", "minutesAwake", "minutesAfterWakeup", "sleep_efficiency",
-                           "sleep_deep_ratio", "sleep_wake_ratio", "sleep_light_ratio", "sleep_rem_ratio"]]
-        all_days = len(user_df)
-        user_df = user_df.dropna(how='all')
-        days_used = len(user_df)
-        data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
     return data
 
 
@@ -101,31 +43,190 @@ def different_badge_types(data):
     return data
 
 
-# ----------------------------------------------------------------------------------------------- #
+# adds stress quantile
+def add_stress_quantile(df):
+    df = df.astype({"id": str})
+    ids = list(np.unique((df[['id']])))
 
+    df["stress_quantile"] = pd.qcut(df["stress_score"].rank(method='first'), [0, .25, .75, 1], labels=["low", "medium", "high"])
+    df['stress_quantile'].replace(to_replace=['low', 'medium', 'high'], value=[0, 1, 2], inplace=True)
 
-# Creates a new column with True for weekend dates and False for weekdays
-def is_weekend(df):
-    df.date = pd.to_datetime(df.date, infer_datetime_format=True)
-    df.loc[:, "is_weekend"] = df.date.dt.dayofweek  # returns 0-4 for Monday-Friday and 5-6 for Weekend
-    df.is_weekend = df.is_weekend > 4
+    d = pd.DataFrame()
+    for user in ids:
+        user_df = df[(df["id"] == user)]
+        user_df["user_stress_quantile"] = pd.qcut(user_df["stress_score"].rank(method='first'), [0, .25, .75, 1],
+                                                  labels=[0, 1, 2])
+        d = pd.concat([d, user_df])
+    df = d
+
     return df
 
 
-# Creates a new column with True if the date is a public holiday in Greece, Cyprus, Sweden or Italy, False otherwise
+# adds sleep duration average values for each user
+def add_sleep_average(df):
+    df = df.astype({"id": str})
+    ids = list(np.unique((df[['id']])))
+
+    d = pd.DataFrame()
+    for user in ids:
+        user_df = df[(df["id"] == user)]
+        user_df['average_sleep_duration'] = user_df['sleep_duration'].mean()
+        d = pd.concat([d, user_df])
+    df = d
+
+    return df
+
+
+# adds steps average values for each user
+def add_steps_average(df):
+    df = df.astype({"id": str})
+    ids = list(np.unique((df[['id']])))
+
+    d = pd.DataFrame()
+    for user in ids:
+        user_df = df[(df["id"] == user)]
+        user_df['average_steps'] = user_df['steps'].mean()
+        d = pd.concat([d, user_df])
+    df = d
+
+    return df
+
+
+# Creates a new column with 1.0 for weekend dates and 0.0 for weekdays
+def is_weekend(df):
+    df.date = pd.to_datetime(df.date, infer_datetime_format=True)
+    df.loc[:, "is_weekend"] = df.date.dt.dayofweek  # returns 0-4 for Monday-Friday and 5-6 for Weekend
+    df.loc[:, 'is_weekend'] = df['is_weekend'].apply(lambda d: 1.0 if d > 4 else 0.0)
+
+    return df
+
+
+# Creates a new column with 1.0 if the date is a public holiday in Greece, Cyprus, Sweden or Italy, 0.0 otherwise
 def is_holiday(df):
     gr_holidays = list(holidays.GR(years=[2021, 2022]).keys())
     swe_holdidays = list(holidays.SWE(years=[2021, 2022]).keys())
     cy_holidays = list(holidays.CY(years=[2021, 2022]).keys())
     it_holidays = list(holidays.IT(years=[2021, 2022]).keys())
 
-    df.loc[:, 'is_holiday'] = df.date.apply(lambda d: True if (
-            (d in gr_holidays) or (d in swe_holdidays) or (d in cy_holidays) or (d in it_holidays)) else False)
+    df.loc[:, 'is_holiday'] = df.date.apply(lambda d: 1.0 if (
+            (d in gr_holidays) or (d in swe_holdidays) or (d in cy_holidays) or (d in it_holidays)) else 0.0)
 
     return df
 
 
+# Single function to integrate all sleep indices
+def add_sleep_regularity_indices(data):
+
+    data.date = pd.to_datetime(data.date)  # convert to datetime
+    # indices
+    users_is = pd.read_pickle('../data/user_level_data/is_index.pkl')
+    users_isp = pd.read_pickle('../data/user_level_data/isp_index.pkl')
+    users_iv = pd.read_pickle('../data/user_level_data/iv_index.pkl')
+    users_sri = pd.read_pickle('../data/user_level_data/sri_index.pkl')
+    users_sjl = pd.read_pickle('../data/user_level_data/sjl_index.pkl')
+    users_sleep_variability = pd.read_pickle('../data/user_level_data/sleep_variability.pkl')
+
+    merged = data.merge(users_is, on='id', how='left')
+    merged = merged.merge(users_iv, on='id', how='left')
+    merged = merged.merge(users_sri, on='id', how='left')
+    merged = merged.merge(users_sjl, on='id', how='left')
+    merged = merged.merge(users_sleep_variability, on='id', how='left')
+
+    # add ISP per week
+    merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
+    merged = merged.sort_values(by=['id', 'date'])
+    merged.isp_index = merged.isp_index.ffill(limit=6)
+
+    merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
+
+    return merged
+
+
+# Single function to integrate all step indices
+def add_steps_regularity_indices(data):
+
+    data.date = pd.to_datetime(data.date)  # convert to datetime
+    # indices
+    users_is = pd.read_pickle('../data/steps_indices/steps_is_index')
+    users_isp = pd.read_pickle('../data/steps_indices/steps_isp_index')
+    users_iv = pd.read_pickle('../data/steps_indices/steps_iv_index')
+    users_sri = pd.read_pickle('../data/steps_indices/steps_sri_index')
+
+    merged = data.merge(users_is, on='id', how='left')
+    merged = merged.merge(users_iv, on='id', how='left')
+    merged = merged.merge(users_sri, on='id', how='left')
+
+    # add ISP per week
+    merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
+    merged = merged.sort_values(by=['id', 'date'])
+    merged.steps_isp_index = merged.steps_isp_index.ffill(limit=6)
+
+    merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
+
+    return merged
+
+
+# Single function to integrate all exercise indices
+def add_exercise_regularity_indices(data):
+
+    data.date = pd.to_datetime(data.date)  # convert to datetime
+    # indices
+    users_is = pd.read_pickle('../data/exercise_indices/exercise_is_index')
+    users_iv = pd.read_pickle('../data/exercise_indices/exercise_iv_index')
+    users_sri = pd.read_pickle('../data/exercise_indices/exercise_sri_index')
+
+    merged = data.merge(users_is, on='id', how='left')
+    merged = merged.merge(users_iv, on='id', how='left')
+    merged = merged.merge(users_sri, on='id', how='left')
+
+    return merged
+
+
+# Adds all the new features
+def add_features(data):
+    # add different activity types
+    data = different_activity_types(data)
+
+    # add different badge types
+    data = different_badge_types(data)
+
+    # add sleep regularity indeces
+    data = add_sleep_regularity_indices(data)
+
+    # add steps regularity indeces
+    data = add_steps_regularity_indices(data)
+
+    # add exercise regularity indeces
+    data = add_exercise_regularity_indices(data)
+
+    # replace steps < 500
+    data = replace_low_steps(data)
+
+    # add stress quantile
+    data = add_stress_quantile(data)
+
+    # add averages for sleep and steps
+    data = add_sleep_average(data)
+    data = add_steps_average(data)
+
+    # add if it is weekend
+    data = is_weekend(data)
+
+    # add if it is holiday
+    data = is_holiday(data)
+
+    # date engineering for start and end sleep time
+    data = start_end_sleep_time(data)
+
+    # steps 24h encoding
+    data = steps_24(data)
+
+    return data
+
 # ----------------------------------------------------------------------------------------------- #
+
+# ----------------------------------------------------------------------------------------------- #
+# CODE FROM pyActigraphy PACKAGE
 def hour_diff(so_f, so_w):
     so_diff = so_f - so_w
     # if any sleep time is after 00:00 the calculation is slightly different
@@ -156,11 +257,6 @@ def social_jet_lag(data):
 
     sjl = so_diff + 0.5 * (sd_f - sd_w)
     return sjl
-
-
-# ----------------------------------------------------------------------------------------------- #
-
-# CODE FROM pyActigraphy PACKAGE
 
 
 def interdaily_stability(data, column_name='sleep'):
@@ -303,99 +399,91 @@ def get_variability_per_day(df_sleep):
     df_sleep.drop(['startHour', 'endHour', 'mode_startTime', 'mode_endTime'], axis=1, inplace=True)
     return df_sleep
 
+# ----------------------------------------------------------------------------------------------- #
 
-# # Single function to integrate all sleep indices
-# def add_sleep_regularity_indices(data):
-#     dir = ".\\..\\data\\user_level_data"
-#
-#     data.date = pd.to_datetime(data.date)  # convert to datetime
-#     # indices
-#     users_isp = pd.read_pickle(os.path.join(dir, "isp_index.pkl"))
-#     users_is = pd.read_pickle(os.path.join(dir, "is_index.pkl"))
-#     users_iv = pd.read_pickle(os.path.join(dir, "iv_index.pkl"))
-#     users_sjl = pd.read_pickle(os.path.join(dir, "sjl_index.pkl"))
-#     users_sri = pd.read_pickle(os.path.join(dir, "sri_index.pkl"))
-#     users_sleep_variability = pd.read_pickle(os.path.join(dir, "sleep_variability.pkl"))
-#
-#     merged = data.merge(users_is, on='id', how='left')
-#     merged = merged.merge(users_iv, on='id', how='left')
-#     merged = merged.merge(users_sjl, on='id', how='left')
-#     merged = merged.merge(users_sri, on='id', how='left')
-#     merged = merged.merge(users_sleep_variability, on='id', how='left')
-#
-#     merged = get_variability_per_day(merged)
-#     # merged.drop(['mode_startTime', 'mode_endTime'], axis=1, inplace=True)
-#
-#     # add ISP per week
-#     merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
-#     merged = merged.sort_values(by=['id', 'date'])
-#     merged.isp_index = merged.isp_index.ffill(limit=6)
-#
-#     merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
-#
-#     return merged
+# ----------------------------------------------------------------------------------------------- #
+# Extra preprocessing actions
 
-# Single function to integrate all sleep indices
-def add_sleep_regularity_indices(data):
+# Replace steps < 500 with user's median
+def replace_low_steps(df):
+    df = df.astype({"id": str})
+    ids = list(np.unique((df[['id']])))
 
-    data.date = pd.to_datetime(data.date)  # convert to datetime
-    # indices
-    users_is = pd.read_pickle('../data/user_level_data/is_index.pkl')
-    users_isp = pd.read_pickle('../data/user_level_data/isp_index.pkl')
-    users_iv = pd.read_pickle('../data/user_level_data/iv_index.pkl')
-    users_sri = pd.read_pickle('../data/user_level_data/sri_index.pkl')
-    users_sjl = pd.read_pickle('../data/user_level_data/sjl_index.pkl')
-    users_sleep_variability = pd.read_pickle('../data/user_level_data/sleep_variability.pkl')
+    d = pd.DataFrame()
 
-    merged = data.merge(users_is, on='id', how='left')
-    merged = merged.merge(users_iv, on='id', how='left')
-    merged = merged.merge(users_sri, on='id', how='left')
-    merged = merged.merge(users_sjl, on='id', how='left')
-    merged = merged.merge(users_sleep_variability, on='id', how='left')
+    for user in ids:
+        user_df = df[(df["id"] == user)]
+        user_df.loc[user_df['steps'] < 500, 'steps'] = user_df['steps'].median()
+        d = pd.concat([d, user_df])
 
-    # add ISP per week
-    merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
-    merged = merged.sort_values(by=['id', 'date'])
-    merged.isp_index = merged.isp_index.ffill(limit=6)
+    d = d.reset_index()
 
-    merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
+    df = d.drop(columns='index')
 
-    return merged
+    return df
 
+# date engineering for start and end sleep time
+def sin_transform(values):
+    return np.sin(2 * np.pi * values / len(set(values)))
+def cos_transform(values):
+    return np.cos(2 * np.pi * values / len(set(values)))
+def start_end_sleep_time(df):
+    cols = ['startTime', 'endTime']
+    for col in cols:
+        df[col] = pd.to_datetime(df[col], format='%Y-%m-%dT%H:%M:%S.%f')
+    df.loc[:, 'startHour'] = df.startTime.dt.hour
+    df.loc[:, 'endHour'] = df.endTime.dt.hour
 
-# Single function to integrate all step indices
-def add_steps_regularity_indices(data):
+    cols = ['startHour', 'endHour']
+    for col in cols:
+        # Sin transformation in time features
+        df["%s_sin" % col] = sin_transform(df[col])
+        # Cos transformation in time features
+        df["%s_cos" % col] = cos_transform(df[col])
 
-    data.date = pd.to_datetime(data.date)  # convert to datetime
-    # indices
-    users_is = pd.read_pickle('../data/steps_indices/steps_is_index')
-    users_isp = pd.read_pickle('../data/steps_indices/steps_isp_index')
-    users_iv = pd.read_pickle('../data/steps_indices/steps_iv_index')
-    users_sri = pd.read_pickle('../data/steps_indices/steps_sri_index')
+    return df
 
-    merged = data.merge(users_is, on='id', how='left')
-    merged = merged.merge(users_iv, on='id', how='left')
-    merged = merged.merge(users_sri, on='id', how='left')
+# encode steps 24h
+def createList(r1, r2):
+    return [item for item in range(r1, r2 + 1)]
+def steps_24(data):
+    # read hourly steps
+    df = pd.read_pickle("../data/daily_hourly_fitbit_types/users_steps_hourly.pkl")
+    df['date'] = pd.to_datetime(df.date, format='%m/%d/%y')
+    df = df.sort_values('date')
+    df = df.reset_index()
+    df = df.drop(columns='index')
 
-    # add ISP per week
-    merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
-    merged = merged.sort_values(by=['id', 'date'])
-    merged.steps_isp_index = merged.steps_isp_index.ffill(limit=6)
+    l = createList(0, 23)
+    for col in l:
+        df[col] = 0
 
-    return merged
+    cols = df.iloc[:, 4:].columns
+    for col in cols:
+        df.loc[df['hour'] == col, col] = df['steps']
+        df = df.rename(columns={col: "Steps_hour%s" % col})
 
+    df = df.groupby(['date', 'id'])['Steps_hour0', 'Steps_hour1',
+                                    'Steps_hour2', 'Steps_hour3', 'Steps_hour4', 'Steps_hour5',
+                                    'Steps_hour6', 'Steps_hour7', 'Steps_hour8', 'Steps_hour9',
+                                    'Steps_hour10', 'Steps_hour11', 'Steps_hour12', 'Steps_hour13',
+                                    'Steps_hour14', 'Steps_hour15', 'Steps_hour16', 'Steps_hour17',
+                                    'Steps_hour18', 'Steps_hour19', 'Steps_hour20', 'Steps_hour21',
+                                    'Steps_hour22', 'Steps_hour23'].sum().reset_index()
+    df = df[['id', 'date', 'Steps_hour0', 'Steps_hour1',
+             'Steps_hour2', 'Steps_hour3', 'Steps_hour4', 'Steps_hour5',
+             'Steps_hour6', 'Steps_hour7', 'Steps_hour8', 'Steps_hour9',
+             'Steps_hour10', 'Steps_hour11', 'Steps_hour12', 'Steps_hour13',
+             'Steps_hour14', 'Steps_hour15', 'Steps_hour16', 'Steps_hour17',
+             'Steps_hour18', 'Steps_hour19', 'Steps_hour20', 'Steps_hour21',
+             'Steps_hour22', 'Steps_hour23']]
 
-# Single function to integrate all exercise indices
-def add_exercise_regularity_indices(data):
+    df["date"] = pd.to_datetime(pd.to_datetime(df["date"]).dt.date)
+    df = df.astype({"id": str})
 
-    data.date = pd.to_datetime(data.date)  # convert to datetime
-    # indices
-    users_is = pd.read_pickle('../data/exercise_indices/exercise_is_index')
-    users_iv = pd.read_pickle('../data/exercise_indices/exercise_iv_index')
-    users_sri = pd.read_pickle('../data/exercise_indices/exercise_sri_index')
+    data['date'] = data['date'].astype('datetime64')
+    df['date'] = df['date'].astype('datetime64')
 
-    merged = data.merge(users_is, on='id', how='left')
-    merged = merged.merge(users_iv, on='id', how='left')
-    merged = merged.merge(users_sri, on='id', how='left')
+    data = data.merge(df, how='left', on=['id', 'date'])
 
-    return merged
+    return data
