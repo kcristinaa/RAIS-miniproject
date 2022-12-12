@@ -183,7 +183,7 @@ def add_exercise_regularity_indices(data):
 
 
 # Adds all the new features
-def add_features(data):
+def add_features(data, frequency):
     # add different activity types
     data = different_activity_types(data)
 
@@ -203,7 +203,8 @@ def add_features(data):
     data = replace_low_steps(data)
 
     # add stress quantile
-    data = add_stress_quantile(data)
+    if frequency == 'daily':
+        data = add_stress_quantile(data)
 
     # add averages for sleep and steps
     data = add_sleep_average(data)
@@ -216,7 +217,8 @@ def add_features(data):
     data = is_holiday(data)
 
     # date engineering for start and end sleep time
-    data = start_end_sleep_time(data)
+    if frequency == 'daily':
+        data = start_end_sleep_time(data)
 
     # steps 24h encoding
     data = steps_24(data)
