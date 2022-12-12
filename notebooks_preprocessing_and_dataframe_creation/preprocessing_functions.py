@@ -7,9 +7,7 @@ from pymongo import MongoClient
 
 
 # --------------------------------------------------------------------------- #
-
 # Pre-processing actions for baseline dataframe
-
 def fitbit_basic_preprocessing(df):
     # selecting the experiment days
     df = df.sort_values(by='date', ascending=True)
@@ -55,9 +53,9 @@ def fitbit_intraday_sleep(df, db_name):
     df = df.merge(df_mongo, how='left', on=['id', 'date'])
     return df
 
-
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
 def sin_transform(values):
     """
     Applies SIN transform to a series value.
@@ -109,9 +107,10 @@ def date_engineering(data):  # data could be any dataframe that needs date engin
 
     return data
 
-
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+# Sema preprocessing
 def sema_basic_preprocessing(df):
     df["negative_feelings"] = np.where(df['TENSE/ANXIOUS'] == 1, 1, np.where(df['ALERT'] == 1, 1,
                                                                              np.where(df['SAD'] == 1, 1,
@@ -123,9 +122,10 @@ def sema_basic_preprocessing(df):
 
     return df
 
-
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+# Extra preprocessing actions
 def one_hot_encoding(fitbit):
     # badgeType encoding
     s = fitbit['badgeType']
@@ -164,11 +164,12 @@ def one_hot_encoding(fitbit):
 
     return fitbit
 
-
 # --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
-# Creates 2 columns that represent if a user has tracked at least once its spo2 or eda
+# Create columns for extra features that are required before post-preprocessing
+
+# Creates 1 column that represent if a user has tracked at least once an early adoptive feature
 def use_EDA_SpO2_ECG(df):
     df['spo2_tracking'] = ""
     df['EDA_tracking'] = ""
@@ -214,7 +215,21 @@ def use_during_sleep(data):
         data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
     return data
 
+# Creates a column that represent if the user wore the wearable or not
+def wear_days(df):
+    df['wear_day'] = df.apply(f, axis=1)
+    return df
 
+def f(row):
+    if row['steps'] < 500:
+        val = 0
+    else:
+        val = 1
+    return val
+
+
+# --------------------------------------------------------------------------- #
+# Post-preprocessing
 def post_preprocessing(df, frequency):
 
     df = wear_days(df)
@@ -279,29 +294,10 @@ def post_preprocessing(df, frequency):
 
     return df
 
-
-# --------------------------------------------------------------------------- #
-
-# adds wear_day
-def wear_days(df):
-    df['wear_day'] = df.apply(f, axis=1)
-    return df
-
-
-def f(row):
-    if row['steps'] < 500:
-        val = 0
-    else:
-        val = 1
-    return val
-
-
 # --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
-
 # Weekly frequency in fitbit dataframe regarding the corresponding survey
-
 def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas dataframe
 
     column_list = list(survey.columns)
@@ -331,17 +327,9 @@ def weekly_fitbit_frequency(survey, fitbit, users):  # survey is stai or panas d
 
     return fitbit_survey
 
-
 # --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
-
-# --------------------------------------------------------------------------- #
-
-# --------------------------------------------------------------------------- #
-
-# --------------------------------------------------------------------------- #
-
 # Split train and test set in order each user to belong only in one of them
 
 def train_test_split_per_user(data, train_size=0.7):
@@ -353,11 +341,9 @@ def train_test_split_per_user(data, train_size=0.7):
     users_test = users[slice:]
     return data[data.id.isin(users_train)], data[data.id.isin(users_test)]
 
-
 # --------------------------------------------------------------------------- #
 
 # --------------------------------------------------------------------------- #
-
 # Label Engineering VO2Max Get VO2 max (cardio score) category based on age category and filteredDemographicVO2Max,
 # according to this publication: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0073182 as
 # summarized here: https://www.healthline.com/health/vo2-max#increasing-vo%E2%82%82-max
@@ -395,3 +381,5 @@ def get_cardio_category(gender, age, vo2max):
                 return "Fair/Good"
             else:
                 return "Poor"
+
+# --------------------------------------------------------------------------- #
