@@ -215,8 +215,10 @@ def use_during_sleep(data):
     return data
 
 
-
 def post_preprocessing(df, frequency):
+
+    df = wear_days(df)
+
     df = use_EDA_SpO2_ECG(df)
 
     df = use_during_sleep(df)
@@ -281,6 +283,11 @@ def post_preprocessing(df, frequency):
 # --------------------------------------------------------------------------- #
 
 # adds wear_day
+def wear_days(df):
+    df['wear_day'] = df.apply(f, axis=1)
+    return df
+
+
 def f(row):
     if row['steps'] < 500:
         val = 0

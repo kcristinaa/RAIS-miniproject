@@ -304,27 +304,54 @@ def get_variability_per_day(df_sleep):
     return df_sleep
 
 
-# Sinlge function to integrate all sleep indices
+# # Single function to integrate all sleep indices
+# def add_sleep_regularity_indices(data):
+#     dir = ".\\..\\data\\user_level_data"
+#
+#     data.date = pd.to_datetime(data.date)  # convert to datetime
+#     # indices
+#     users_isp = pd.read_pickle(os.path.join(dir, "isp_index.pkl"))
+#     users_is = pd.read_pickle(os.path.join(dir, "is_index.pkl"))
+#     users_iv = pd.read_pickle(os.path.join(dir, "iv_index.pkl"))
+#     users_sjl = pd.read_pickle(os.path.join(dir, "sjl_index.pkl"))
+#     users_sri = pd.read_pickle(os.path.join(dir, "sri_index.pkl"))
+#     users_sleep_variability = pd.read_pickle(os.path.join(dir, "sleep_variability.pkl"))
+#
+#     merged = data.merge(users_is, on='id', how='left')
+#     merged = merged.merge(users_iv, on='id', how='left')
+#     merged = merged.merge(users_sjl, on='id', how='left')
+#     merged = merged.merge(users_sri, on='id', how='left')
+#     merged = merged.merge(users_sleep_variability, on='id', how='left')
+#
+#     merged = get_variability_per_day(merged)
+#     # merged.drop(['mode_startTime', 'mode_endTime'], axis=1, inplace=True)
+#
+#     # add ISP per week
+#     merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
+#     merged = merged.sort_values(by=['id', 'date'])
+#     merged.isp_index = merged.isp_index.ffill(limit=6)
+#
+#     merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
+#
+#     return merged
+
+# Single function to integrate all sleep indices
 def add_sleep_regularity_indices(data):
-    dir = ".\\..\\data\\user_level_data"
-    
+
     data.date = pd.to_datetime(data.date)  # convert to datetime
     # indices
-    users_isp = pd.read_pickle(os.path.join(dir, "isp_index.pkl"))
-    users_is = pd.read_pickle(os.path.join(dir, "is_index.pkl"))
-    users_iv = pd.read_pickle(os.path.join(dir, "iv_index.pkl"))
-    users_sjl = pd.read_pickle(os.path.join(dir, "sjl_index.pkl"))
-    users_sri = pd.read_pickle(os.path.join(dir, "sri_index.pkl"))
-    users_sleep_variability = pd.read_pickle(os.path.join(dir, "sleep_variability.pkl"))
+    users_is = pd.read_pickle('../data/user_level_data/is_index.pkl')
+    users_isp = pd.read_pickle('../data/user_level_data/isp_index.pkl')
+    users_iv = pd.read_pickle('../data/user_level_data/iv_index.pkl')
+    users_sri = pd.read_pickle('../data/user_level_data/sri_index.pkl')
+    users_sjl = pd.read_pickle('../data/user_level_data/sjl_index.pkl')
+    users_sleep_variability = pd.read_pickle('../data/user_level_data/sleep_variability.pkl')
 
     merged = data.merge(users_is, on='id', how='left')
     merged = merged.merge(users_iv, on='id', how='left')
-    merged = merged.merge(users_sjl, on='id', how='left')
     merged = merged.merge(users_sri, on='id', how='left')
+    merged = merged.merge(users_sjl, on='id', how='left')
     merged = merged.merge(users_sleep_variability, on='id', how='left')
-
-    merged = get_variability_per_day(merged)
-    # merged.drop(['mode_startTime', 'mode_endTime'], axis=1, inplace=True)
 
     # add ISP per week
     merged = merged.merge(users_isp, how='left', left_on=['id', 'date'], right_on=['id', 'startDate'])
@@ -335,7 +362,8 @@ def add_sleep_regularity_indices(data):
 
     return merged
 
-# Sinlge function to integrate all step indices
+
+# Single function to integrate all step indices
 def add_steps_regularity_indices(data):
 
     data.date = pd.to_datetime(data.date)  # convert to datetime
@@ -354,10 +382,20 @@ def add_steps_regularity_indices(data):
     merged = merged.sort_values(by=['id', 'date'])
     merged.steps_isp_index = merged.steps_isp_index.ffill(limit=6)
 
-    merged.drop(['startDate', 'endDate'], axis=1, inplace=True)
-
     return merged
 
 
+# Single function to integrate all exercise indices
+def add_exercise_regularity_indices(data):
 
+    data.date = pd.to_datetime(data.date)  # convert to datetime
+    # indices
+    users_is = pd.read_pickle('../data/exercise_indices/exercise_is_index')
+    users_iv = pd.read_pickle('../data/exercise_indices/exercise_iv_index')
+    users_sri = pd.read_pickle('../data/exercise_indices/exercise_sri_index')
 
+    merged = data.merge(users_is, on='id', how='left')
+    merged = merged.merge(users_iv, on='id', how='left')
+    merged = merged.merge(users_sri, on='id', how='left')
+
+    return merged
