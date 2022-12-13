@@ -213,6 +213,8 @@ def use_during_sleep(data):
         user_df = user_df.dropna(how='all')
         days_used = len(user_df)
         data.loc[data['id'] == user, 'used_during_night'] = (days_used / all_days)
+    data['used_during_night'] = data['used_during_night'].apply(pd.to_numeric)
+
     return data
 
 # Creates a column that represent if the user wore the wearable or not

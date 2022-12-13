@@ -430,6 +430,40 @@ def sin_transform(values):
 def cos_transform(values):
     return np.cos(2 * np.pi * values / len(set(values)))
 def start_end_sleep_time(df):
+    # feature engineering
+    cols = ['startTime', 'endTime']
+    for col in cols:
+        df[col] = pd.to_datetime(df[col], format='%Y-%m-%dT%H:%M:%S.%f')
+
+    # for startTime
+    df.loc[:, 'startDay'] = df.startTime.dt.day
+    df.loc[:, 'startWeek'] = df.startTime.dt.isocalendar().week
+    df.loc[:, 'startWeekday'] = df.startTime.dt.weekday
+    df.loc[:, 'startMonth'] = df.startTime.dt.month
+    df.loc[:, 'startYear'] = df.startTime.dt.year
+
+    cols = ['startDay', 'startWeek', 'startWeekday', 'startMonth', 'startYear']
+    for col in cols:
+        # Sin transformation in time features
+        df["%s_sin" % col] = sin_transform(df[col])
+        # Cos transformation in time features
+        df["%s_cos" % col] = cos_transform(df[col])
+
+    # for endTime
+    df.loc[:, 'endDay'] = df.endTime.dt.day
+    df.loc[:, 'endWeek'] = df.endTime.dt.isocalendar().week
+    df.loc[:, 'endWeekday'] = df.endTime.dt.weekday
+    df.loc[:, 'endMonth'] = df.endTime.dt.month
+    df.loc[:, 'endYear'] = df.endTime.dt.year
+
+    cols = ['endDay', 'endWeek', 'endWeekday', 'endMonth', 'endYear']
+    for col in cols:
+        # Sin transformation in time features
+        df["%s_sin" % col] = sin_transform(df[col])
+        # Cos transformation in time features
+        df["%s_cos" % col] = cos_transform(df[col])
+
+    # process the hour
     cols = ['startTime', 'endTime']
     for col in cols:
         df[col] = pd.to_datetime(df[col], format='%Y-%m-%dT%H:%M:%S.%f')
@@ -442,6 +476,10 @@ def start_end_sleep_time(df):
         df["%s_sin" % col] = sin_transform(df[col])
         # Cos transformation in time features
         df["%s_cos" % col] = cos_transform(df[col])
+
+    df.drop(columns=['startTime', 'endTime', 'startHour', 'endHour', 'startDay', 'startWeek',
+            'startWeekday', 'startMonth', 'startYear', 'endDay', 'endWeek', 'endWeekday', 'endMonth',
+            'endYear'], inplace=True)
 
     return df
 
