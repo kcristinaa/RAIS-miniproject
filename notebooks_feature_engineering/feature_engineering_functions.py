@@ -118,6 +118,8 @@ def is_holiday(df):
 def add_sleep_regularity_indices(data):
 
     data.date = pd.to_datetime(data.date)  # convert to datetime
+    data['id'] = data['id'].astype(str)  # convert to string
+
     # indices
     users_is = pd.read_pickle('../data/user_level_data/is_index.pkl')
     users_isp = pd.read_pickle('../data/user_level_data/isp_index.pkl')
@@ -148,9 +150,13 @@ def add_steps_regularity_indices(data):
     data.date = pd.to_datetime(data.date)  # convert to datetime
     # indices
     users_is = pd.read_pickle('../data/steps_indices/steps_is_index')
+    users_is['id'] = users_is['id'].astype(str)  # convert to string
     users_isp = pd.read_pickle('../data/steps_indices/steps_isp_index')
+    users_isp['id'] = users_isp['id'].astype(str)  # convert to string
     users_iv = pd.read_pickle('../data/steps_indices/steps_iv_index')
+    users_iv['id'] = users_iv['id'].astype(str)  # convert to string
     users_sri = pd.read_pickle('../data/steps_indices/steps_sri_index')
+    users_sri['id'] = users_sri['id'].astype(str)  # convert to string
 
     merged = data.merge(users_is, on='id', how='left')
     merged = merged.merge(users_iv, on='id', how='left')
@@ -172,8 +178,11 @@ def add_exercise_regularity_indices(data):
     data.date = pd.to_datetime(data.date)  # convert to datetime
     # indices
     users_is = pd.read_pickle('../data/exercise_indices/exercise_is_index')
+    users_is['id'] = users_is['id'].astype(str)  # convert to string
     users_iv = pd.read_pickle('../data/exercise_indices/exercise_iv_index')
+    users_iv['id'] = users_iv['id'].astype(str)  # convert to string
     users_sri = pd.read_pickle('../data/exercise_indices/exercise_sri_index')
+    users_sri['id'] = users_sri['id'].astype(str)  # convert to string
 
     merged = data.merge(users_is, on='id', how='left')
     merged = merged.merge(users_iv, on='id', how='left')
