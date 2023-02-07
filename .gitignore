@@ -221,5 +221,3 @@ cython_debug/
 /logs.log
 /credentials.json
 /config.env
-
-data/
