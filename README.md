@@ -13,6 +13,9 @@ including modeling gender, age, personality traits, and stress, reaching AUC-ROC
 work has strong potential in critical applications such as mental healthcare monitoring, privacy preservation, and responsible artificial
 intelligence by fostering fairness assessments when protected attribute knowledge is unavailable.
 
+# RAIS-miniproject
+
+A repository for sharing the potential inferences that can be done exploiting the publicly available [LifeSnaps Dataset](https://www.nature.com/articles/s41597-022-01764-x).  
 
 # Acknowledgments
 
