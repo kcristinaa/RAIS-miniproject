@@ -222,4 +222,4 @@ cython_debug/
 /credentials.json
 /config.env
 
-data
+data/
