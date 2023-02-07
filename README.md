@@ -15,7 +15,7 @@ intelligence by fostering fairness assessments when protected attribute knowledg
 
 # RAIS-miniproject
 
-A repository for sharing the potential inferences that can be done exploiting the publicly available [LifeSnaps Dataset](https://www.nature.com/articles/s41597-022-01764-x).  
+A repository for sharing our comprehensive benchmark suite containing all the potential inferences that can be done exploiting the publicly available [LifeSnaps Dataset](https://www.nature.com/articles/s41597-022-01764-x). The preprocessing and dataframe creation notebooks create the unified dataframes used in the whole pipeline. The feature engineering notebooks add the new domain-specific features. The ml models notebooks consist of all the state-of-the-art machine learning models inferring various user traits. Finally, the visualizations notebooks include the exploratory data analysis and all the features presented in the paper submitted for review.   
 
 # Acknowledgments
 
