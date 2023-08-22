@@ -4,7 +4,7 @@ Ubiquitous devices, such as smartphones and wearables, are becoming increasingly
 
 This is a repository for sharing our comprehensive benchmark suite. The notebooks_preprocessing_and_dataframe_creation create the unified dataframes used in the whole pipeline. The notebooks_feature_engineering adds new domain-specific features. The notebooks_ml_models consist of all the state-of-the-art machine learning models inferring various user traits. Finally, the notebooks_visualizations include the exploratory data analysis and all the features presented in the paper submitted for review.
 
-**Citation**
+**Citation:**
 Christina Karagianni, Eva Paraschou, Sofia Yfantidou and Athena Vakali, "MINDSET: A benchMarking suIte exploring seNsing Data for SElf sTates inference", DSAA 2023, Thessaloniki, Greece, 2023
 
 
